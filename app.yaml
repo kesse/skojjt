@@ -43,3 +43,11 @@ handlers:
   script: main.app
   login: required
   secure: always
+
+indexes:
+- kind: Person
+  properties:
+    - name: scoutgroup
+    - name: firstname
+    - name: lastname
+

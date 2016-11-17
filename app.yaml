@@ -44,10 +44,3 @@ handlers:
   login: required
   secure: always
 
-indexes:
-- kind: Person
-  properties:
-    - name: scoutgroup
-    - name: firstname
-    - name: lastname
-

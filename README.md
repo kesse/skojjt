@@ -1,10 +1,12 @@
-#Skojjt
-##Närvarorapportering för scouter. 
+# Scoutkåren Göta Lejon närvaro
 
-*av Martin Green/Tynnereds scoutkår.*
 
-https://skojjt.appspot.com
-Prova skojjt.appspot.com, säg till martin@famgreen.se för att få access.
+En fork av Skojjt som är utvecklad av Martin Green/Tynnereds scoutkår.
+https://github.com/martin-green/skojjt
+
+
+Ni kommer åt närvaron på:  
+https://gotalejon-narvaro.appspot.com
 
 Målet med skojjt är en enkel närvaroregistrering som kan används av alla på avdelning. Samt att göra rapporteringen enkel (ingen excel).
 Alternativen verkar så undermåliga för vår verksamhet, så ett eget system var den bästa möjligheten.
@@ -34,11 +36,11 @@ http://www.sverigesforeningssystem.se/dak-formatet/vad-ar-dak/
 * (ancestor queries to get consistency)
 
 ###Hur man testar/utvecklar:
-Klona git-repon till lokal dator.
-Installera Python 2.7 och Google App Engine SDK (GAE). 
-Starta GAE. Lägg till skojjt med File|Add existing application...
-Markera skojjt i listan kicka start, sen browse.
-Man kan också köra Visual Studio Code för att få brytpunkter i koden.
+* Klona git-repon till lokal dator.
+* Installera Python 2.7 och Google App Engine SDK (GAE). 
+* Starta GAE. Lägg till skojjt med File|Add existing application...
+* Markera skojjt i listan kicka start, sen browse.
+* Man kan också köra Visual Studio Code för att få brytpunkter i koden.
 
 Om du kör på windows och får felet:
 "ImportError: cannot import name RAND_egd"

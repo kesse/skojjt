@@ -440,6 +440,12 @@ def persons(sgroup_url=None, person_url=None, action=None):
 					tp.leader = (action == "setasleader")
 					tp.put()
 			return redirect(breadcrumbs[-1]['link'])
+		elif action == "addtotroop":
+			troop_key = ndb.Key(urlsafe=request.args["troop"])
+
+			troopperson = TroopPerson.create(troop_key, person.key, False)
+			troopperson.commit()
+			return redirect(breadcrumbs[-1]['link'])
 		else:
 			logging.error('unknown action=' + action)
 			abort(404)
@@ -468,6 +474,7 @@ def persons(sgroup_url=None, person_url=None, action=None):
 			heading=section_title,
 			baselink='/persons/' + scoutgroup.key.urlsafe() + '/',
 			addlink=True,
+			troops=Troop.query().fetch(),
 			trooppersons=TroopPerson.query(TroopPerson.person == person.key).fetch(), # TODO: memcache
 			ep=person,
 			#attendances=Attendance.query(Attendance.person==person.key).fetch(), # todo: filter by semester

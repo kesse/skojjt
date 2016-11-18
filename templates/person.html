@@ -60,33 +60,39 @@
 		</div>
 		{% endif %}
 		{% if hasPerson %}
-        <div class="table-responsive">
-			<table class="table table-striped">
-              <thead>
-                <tr>
-                  <th class="col-xs-4 col-sm-4 col-lg-4">Avdelningar</th>
-                  <th class="col-xs-4 col-sm-4 col-lg-4">&nbsp;</th>
-                  <th class="col-xs-4 col-sm-4 col-lg-4">&nbsp;</th>
-                </tr>
-              </thead>
-              <tbody>
+			<div class="table-responsive">
+				<table class="table table-striped">
+					<thead>
+						<tr>
+							<th class="col-xs-4 col-sm-4 col-lg-4">Avdelningar</th>
+							<th class="col-xs-4 col-sm-4 col-lg-4">&nbsp;</th>
+							<th class="col-xs-4 col-sm-4 col-lg-4">&nbsp;</th>
+						</tr>
+					</thead>
+					<tbody>
 			    {% for tp in trooppersons %}
-                <tr>
-				<td>
-					{% set troop = tp.troop.get() %}
-					{% set group_key = troop.scoutgroup %}
-					<a href="/start/{{group_key.urlsafe()}}/{{troop.key.urlsafe()}}/">{{tp.gettroopname()}}</a>{% if tp.leader %} - Ledare{% endif %}
-				</td>
-				<td>
-					<a href="removefromtroop?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Ta bort från avdelning</a>
-				</td>
-				<td>
-					{% if tp.leader %}<a href="removeasleader?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Ta bort som ledare</a>{% else %}<a href="setasleader?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Gör till ledare</a>{% endif %}
-				</td>
-				</tr>
+						<tr>
+							<td>
+								{% set troop = tp.troop.get() %}
+								{% set group_key = troop.scoutgroup %}
+								<a href="/start/{{group_key.urlsafe()}}/{{troop.key.urlsafe()}}/">{{tp.gettroopname()}}</a>{% if tp.leader %} - Ledare{% endif %}
+							</td>
+							<td>
+								<a href="removefromtroop?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Ta bort från avdelning</a>
+							</td>
+							<td>
+								{% if tp.leader %}<a href="removeasleader?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Ta bort som ledare</a>{% else %}<a href="setasleader?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Gör till ledare</a>{% endif %}
+							</td>
+						</tr>
 			    {% endfor %}
-              </tbody>
-			</table>
+					</tbody>
+				</table>
+
+				{% for troop in troops %}
+					{{troop.name()}}
+
+					<a href="removefromtroop?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Lägg till avdelning</a><br>
+				{% endfor %}
 		</div>
 		{% endif %}
 	</div>

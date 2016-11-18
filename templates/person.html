@@ -91,7 +91,7 @@
 				{% for troop in troops %}
 					{{troop.getname()}}
 
-					<a href="removefromtroop?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Lägg till avdelning</a><br>
+					<a href="addtotroop?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Lägg till avdelning</a><br>
 				{% endfor %}
 		</div>
 		{% endif %}

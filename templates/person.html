@@ -89,7 +89,7 @@
 				</table>
 
 				{% for troop in troops %}
-					{{troop.name()}}
+					{{troop.getname()}}
 
 					<a href="removefromtroop?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Lägg till avdelning</a><br>
 				{% endfor %}

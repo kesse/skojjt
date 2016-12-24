@@ -5,8 +5,11 @@ import datetime
 import urllib
 import json
 import scoutnet
+import htmlform
 from dakdata import *
 from google.appengine.api import users
+from google.appengine.api import app_identity
+from google.appengine.api import mail
 import random
 
 from flask import Flask, render_template, abort, redirect, url_for, request, make_response
@@ -32,11 +35,10 @@ def home():
 	if user.groupaccess != None:
 		starturl += user.groupaccess.urlsafe() + '/'
 		personsurl += user.groupaccess.urlsafe() + '/'
-	return render_template('index.html',
+	return render_template('start.html',
 						   heading='Hem',
 						   items=[],
 						   breadcrumbs=breadcrumbs,
-						   showstart=True,
 						   user=UserPrefs.current(),
 						   starturl=starturl,
 						   personsurl=personsurl
@@ -75,6 +77,23 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 		troop = troop_key.get()
 		breadcrumbs.append({'link':baselink, 'text':troop.getname()})
 		
+	if key_url == "settings":
+		section_title = u'Inställningar'
+		baselink += "settings/"
+		breadcrumbs.append({'link':baselink, 'text':section_title})
+		if request.method == "POST":
+			troop.defaultstarttime = request.form['defaultstarttime'] 
+			troop.rapportID = int(request.form['rapportID'])
+			troop.put()
+			
+		form = htmlform.HtmlForm('troopsettings')
+		form.AddField('defaultstarttime', troop.defaultstarttime, 'Avdelningens vanliga starttid')
+		form.AddField('rapportID', troop.rapportID, 'Unik rapport ID för kommunens närvarorapport', 'number')
+		return render_template('form.html',
+			heading=section_title,
+			baselink=baselink,
+			form=str(form),
+			breadcrumbs=breadcrumbs)
 	if key_url == "newperson":
 		section_title = "Ny person"
 		baselink += key_url + "/"
@@ -85,12 +104,25 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 				baselink=baselink,
 				breadcrumbs=breadcrumbs)
 		elif request.method == "POST":
-			person = Person.createlocal(request.form['firstname'], request.form['lastname'], request.form['birthdate'].replace('-',''), request.form['sex'] == "female")
+			pnr = request.form['personnummer'].replace('-','')
+			person = Person.createlocal(
+				request.form['firstname'], 
+				request.form['lastname'], 
+				pnr, 
+				Person.getIsFemale(pnr),
+				request.form['mobile'],
+				request.form['phone'],
+				request.form['email'])
+			person.street = request.form["street"]
+			person.zip_code = request.form["zip_code"]
+			person.zip_name = request.form["zip_name"]
 			person.scoutgroup = sgroup_key
 			logging.info("created local person %s", person.getname())
 			person.put()
 			troopperson = TroopPerson.create(troop_key, person.key, False)
 			troopperson.commit()
+			if scoutgroup.scoutnetID != None and scoutgroup.apikey_waitinglist != None:
+				scoutnet.AddPersonToWaitinglist(scoutgroup, person.firstname, person.lastname, person.personnr, person.email, request.form['street'], request.form['zip_code'], request.form['zip_name'], person.mobile, person.phone)
 			return redirect(breadcrumbs[-2]['link'])
 	
 	if request.method == "GET" and len(request.args) > 0:
@@ -134,15 +166,6 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			logging.info("Set new semester: %s", semester.getname())
 			#ForceSemesterForAll(semester)
 			return semester.getname()
-		elif action == "setdefaultstarttime":
-			if scoutgroup == None:
-				raise ValueError('Missing scoutgroup')
-			if troop == None:
-				raise ValueError('Missing troop')
-			troop.defaultstarttime = request.args['time']
-			troop.put()
-			logging.info("Set new starttime for %s to %s", troop.getname(), troop.defaultstarttime)
-			return troop.defaultstarttime
 		else:
 			logging.error('unknown action=' + action)
 			abort(404)
@@ -187,7 +210,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 		elif action == "deletemeeting":
 			meeting = ndb.Key(urlsafe=key_url).get()
 			logging.debug("deleting meeting=%s", meeting.getname())
-			meeting.key.delete()
+			meeting.delete()
 			return redirect(breadcrumbs[-1]['link'])
 		else:
 			logging.error('unknown action=' + action)
@@ -204,11 +227,12 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			breadcrumbs=breadcrumbs)
 	elif troop==None:
 		section_title = 'Avdelningar'
-		return render_template('index.html',
+		return render_template('troops.html',
 			heading=section_title,
 			baselink=baselink,
-			addlink=True,
-			items=Troop.query(Troop.scoutgroup==sgroup_key).fetch(100), # TODO: memcache
+			scoutgroupinfolink='/scoutgroupinfo/' + sgroup_url + '/',
+			user=user,
+			troops=Troop.query(Troop.scoutgroup==sgroup_key).fetch(100), # TODO: memcache
 			breadcrumbs=breadcrumbs)
 	elif key_url!=None and key_url!="dak":
 		meeting = ndb.Key(urlsafe=key_url).get()
@@ -233,7 +257,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 		ageProblemDesc = []
 
 		section_title = troop.getname()
-		trooppersons = TroopPerson.getTroopPersonsForTroop(troop_key) #TroopPerson.query(TroopPerson.troop==troop_key).order(TroopPerson.sortname).fetch() # TODO: memcache
+		trooppersons = TroopPerson.getTroopPersonsForTroop(troop_key)
 		meetings = Meeting.gettroopmeetings(troop_key, scoutgroup.activeSemester)
 		
 		attendances = [] # [meeting][person]
@@ -375,13 +399,10 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			return render_template('troop.html',
 				heading=section_title,
 				baselink='/persons/' + scoutgroup.key.urlsafe() + '/',
-				addlink=True,
-				items=persons,
+				persons=persons,
 				trooppersons=trooppersons,
 				meetings=meetings,
 				attendances=attendances,
-				showaddmeetings=True,
-				showaddmember=True,
 				breadcrumbs=breadcrumbs,
 				allowance=allowance,
 				defaultstarttime=troop.defaultstarttime)
@@ -439,7 +460,6 @@ def persons(sgroup_url=None, person_url=None, action=None):
 				else:
 					tp.leader = (action == "setasleader")
 					tp.put()
-			return redirect(breadcrumbs[-1]['link'])
 		else:
 			logging.error('unknown action=' + action)
 			abort(404)
@@ -474,6 +494,64 @@ def persons(sgroup_url=None, person_url=None, action=None):
 			breadcrumbs=breadcrumbs,
 			username=user.getname())
 	
+@app.route('/scoutgroupinfo/<sgroup_url>')
+@app.route('/scoutgroupinfo/<sgroup_url>/', methods = ['POST', 'GET'])
+def scoutgroupinfo(sgroup_url):
+	user = UserPrefs.current()
+	if not user.canImport():
+		return "denied", 403
+	breadcrumbs = [{'link':'/', 'text':'Hem'}]
+	baselink = "/scoutgroupinfo/"
+	section_title = "Kårinformation"
+	scoutgroup = None
+	if sgroup_url!=None:
+		sgroup_key = ndb.Key(urlsafe=sgroup_url)
+		scoutgroup = sgroup_key.get()
+		baselink += sgroup_url+"/"
+		breadcrumbs.append({'link':baselink, 'text':scoutgroup.getname()})
+	if request.method == "POST":
+		logging.info("POST, %s" % str(request.form))
+		scoutgroup.organisationsnummer = request.form['organisationsnummer'].strip()
+		scoutgroup.foreningsID = request.form['foreningsID'].strip()
+		scoutgroup.scoutnetID = request.form['scoutnetID'].strip()
+		scoutgroup.kommunID = request.form['kommunID'].strip()
+		scoutgroup.apikey_waitinglist = request.form['apikey_waitinglist'].strip()
+		scoutgroup.apikey_all_members = request.form['apikey_all_members'].strip()
+		scoutgroup.put()
+		logging.info("Done, redirect to: %s", breadcrumbs[-1]['link'])
+		if "import" in request.form:
+			result = RunScoutnetImport(scoutgroup.scoutnetID, scoutgroup.apikey_all_members, user)
+			return render_template('table.html', items=result, rowtitle='Result', breadcrumbs=breadcrumbs)
+		else:
+			return redirect(breadcrumbs[-1]['link'])
+	else:
+		return render_template('scoutgroupinfo.html',
+			heading=section_title,
+			baselink=baselink,
+			scoutgroup=scoutgroup,
+			breadcrumbs=breadcrumbs)
+
+@app.route('/getaccess/', methods = ['POST', 'GET'])
+def getaccess():
+	user = UserPrefs.current()
+	breadcrumbs = [{'link':'/', 'text':'Hem'}]
+	baselink = "/getaccess/"
+	section_title = "Access"
+	breadcrumbs.append({'link':baselink, 'text':section_title})
+	if request.method == "POST":
+		adminEmails = [u.email for u in UserPrefs.query(UserPrefs.hasadminaccess==True).fetch()]
+		if len(adminEmails) > 0:
+			scoutgroup_name = request.form.get('sg').strip()
+			mail.send_mail(sender=user.email,
+			to=','.join(adminEmails),
+			subject="Användren: " + user.getname() + " vill ha access.\nKår: " + scoutgroup_name,
+			body="""""")	
+		return redirect('/')
+	else:
+		return render_template('getaccess.html',
+			baselink=baselink,
+			breadcrumbs=breadcrumbs)
+
 @app.route('/import')
 @app.route('/import/', methods = ['POST', 'GET'])
 def import_():
@@ -485,20 +563,16 @@ def import_():
 	breadcrumbs = [{'link':'/', 'text':'Hem'},
 				   {'link':'/import', 'text':'Import'}]
 
-	if request.method == 'POST':
-		commit = 'commit' in request.form.values()
-		api_key = request.form.get('apikey').strip()
-		groupid = request.form.get('groupid').strip()
-		data = scoutnet.GetScoutnetMembersAPIJsonData(groupid, api_key)
-		importer = ScoutnetImporter()
-		importer.commit = commit
-		result = importer.DoImport(data)
-		return render_template('table.html', items=result, rowtitle='Result', breadcrumbs=breadcrumbs)
-	else:
-		return render_template('updatefromscoutnetform.html', breadcrumbs=breadcrumbs)
-	return render_template('updatefromscoutnetform.html', heading="Import", breadcrumbs=breadcrumbs, showstart=True, username=user.getname())
-	
-	
+	if request.method != 'POST':
+		return render_template('updatefromscoutnetform.html', heading="Import", breadcrumbs=breadcrumbs, username=user.getname())
+
+	commit = 'commit' in request.form.values()
+	api_key = request.form.get('apikey').strip()
+	groupid = request.form.get('groupid').strip()
+	result = RunScoutnetImport(groupid, api_key, user, commit)
+	return render_template('table.html', items=result, rowtitle='Result', breadcrumbs=breadcrumbs)
+
+
 @app.route('/admin')
 @app.route('/admin/')
 def admin():
@@ -509,7 +583,7 @@ def admin():
 
 	breadcrumbs = [{'link':'/', 'text':'Hem'},
 				   {'link':'/admin', 'text':'Admin'}]
-	return render_template('admin.html', heading="Admin", breadcrumbs=breadcrumbs, showstart=True, username=user.getname())
+	return render_template('admin.html', heading="Admin", breadcrumbs=breadcrumbs, username=user.getname())
 
 @app.route('/admin/access/')
 @app.route('/admin/access/<userprefs_url>')
@@ -533,16 +607,16 @@ def adminaccess(userprefs_url=None):
 	breadcrumbs.append({'link':baselink, 'text':section_title})
 
 	if userprefs_url == None:
-		return render_template('index.html',
+		return render_template('userlist.html',
 			heading=section_title,
 			baselink=baselink,
 			addlink=True,
-			items=UserPrefs().query().fetch(),
+			users=UserPrefs().query().fetch(),
 			breadcrumbs=breadcrumbs)
 	else:
 		userprefs = ndb.Key(urlsafe=userprefs_url).get()
 		if request.method == 'POST':
-			logging.info('request.form=%s', str(request.form))
+			#logging.info('request.form=%s', str(request.form))
 			userprefs.hasaccess = request.form.get('hasAccess') == 'on'
 			userprefs.hasadminaccess = request.form.get('hasAdminAccess') == 'on'
 			userprefs.groupadmin = request.form.get('groupadmin') == 'on'
@@ -574,9 +648,20 @@ def dodelete():
 		abort(403)
 		return "denied"
 
-	# DeleteAllData() 
+	# DeleteAllData()
 	return redirect('/admin')
 
+	
+@app.route('/admin/settroopsemester/')
+def settroopsemester():
+	user = UserPrefs.current()
+	if not user.isAdmin():
+		abort(403)
+		return "denied"
+
+	dosettroopsemester()
+	return redirect('/admin')
+	
 @app.route('/admin/fixsgroupids/')
 def fixsgroupids():
 	user = UserPrefs.current()
@@ -618,7 +703,7 @@ def page_not_found(e):
 
 @app.errorhandler(403)
 def access_denied(e):
-	return render_template('access.html'), 403
+	return render_template('403.html'), 403
 
 @app.errorhandler(500)
 def serverError(e):

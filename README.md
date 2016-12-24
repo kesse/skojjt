@@ -1,11 +1,10 @@
 # Scoutkåren Göta Lejon närvaro
 
 
-En fork av Skojjt som är utvecklad av Martin Green/Tynnereds scoutkår.
+En fork av Skojjt som är utvecklad av Martin Green/Tynnereds scoutk?r.
 https://github.com/martin-green/skojjt
 
-
-Ni kommer åt närvaron på:  
+Ni kommer åt närvaron på:
 https://gotalejon-narvaro.appspot.com
 
 Målet med skojjt är en enkel närvaroregistrering som kan används av alla på avdelning. Samt att göra rapporteringen enkel (ingen excel).
@@ -26,21 +25,14 @@ Vi har även möjlighet att koppla denna närvaro till andra partners, t ex Sensus 
 Skojjt implementerar DAK för redovisning till Göteborgs kommun:
 http://www.sverigesforeningssystem.se/dak-formatet/vad-ar-dak/
 
+###[Dokumentation](https://github.com/martin-green/skojjt/wiki)
 
-###Att Göra (TODO):
-* Sensus, integrera automatisk rapportering
-* Bättre hantering av terminer (semesters)
-* Begränsa vad användarna kan se (bara sin egen kår)
-* Mer användning av Memcache för att hålla ner mängden reads från datastore.
-* Backup/Resore
-* (ancestor queries to get consistency)
-
-###Hur man testar/utvecklar:
-* Klona git-repon till lokal dator.
-* Installera Python 2.7 och Google App Engine SDK (GAE). 
-* Starta GAE. Lägg till skojjt med File|Add existing application...
-* Markera skojjt i listan kicka start, sen browse.
-* Man kan också köra Visual Studio Code för att få brytpunkter i koden.
+###Hur man testar/utvecklar
+Klona git-repon till lokal dator.
+Installera Python 2.7 och Google App Engine SDK (GAE). 
+Starta GAE. Lägg till skojjt med File|Add existing application...
+Markera skojjt i listan kicka start, sen browse.
+Man kan också köra Visual Studio Code för att få brytpunkter i koden.
 
 Om du kör på windows och får felet:
 "ImportError: cannot import name RAND_egd"
@@ -48,4 +40,3 @@ Editera:
 C:\Prgram Files (x86)\Google\google_appengine\google\appengine\dist27\socket.py
 ta bort: RAND_egd from line 73:
 from _ssl import RAND_add, RAND_egd, RAND_status, SSL_ERROR_ZERO_RETURN, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_X509_LOOKUP, SSL_ERROR_SYSCALL, SSL_ERROR_SSL, SSL_ERROR_WANT_CONNECT, SSL_ERROR_EOF, SSL_ERROR_INVALID_ERROR_CODE
-

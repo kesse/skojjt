@@ -8,6 +8,25 @@ from google.appengine.api import memcache, users
 
 from google.appengine.ext import ndb
 
+class PropertyWriteTracker(ndb.Model):
+	_dirty = False
+
+	def __init__(self, *args, **kw):
+		self._dirty = False
+		super(PropertyWriteTracker, self).__init__(*args, **kw)
+
+	def __setattr__(self, key, value):
+		if key[:1] != '_': # avoid all system properties and "_dirty"
+			if self.__getattribute__(key) != value:
+				self._make_dirty()
+		super(PropertyWriteTracker, self).__setattr__(key, value)
+
+	def _make_dirty(self):
+		self._dirty = True
+
+	def _not_dirty(self):
+		self._dirty = False
+
 
 class Semester(ndb.Model):
 	year = ndb.IntegerProperty(required=True)
@@ -44,25 +63,30 @@ class ScoutGroup(ndb.Model):
 	name = ndb.StringProperty(required=True)
 	activeSemester = ndb.KeyProperty(kind=Semester)
 	organisationsnummer = ndb.StringProperty()
-	foreningsID = ndb.StringProperty()
+	foreningsID = ndb.StringProperty(required=False, default="")
+	scoutnetID = ndb.StringProperty(required=False, default="")
 	kommunID = ndb.StringProperty(default="1480")
+	apikey_waitinglist = ndb.StringProperty(required=False, default="")
+	apikey_all_members  = ndb.StringProperty(required=False, default="")
 
 	@staticmethod
 	def getid(name):
 		return name.lower().replace(' ', '')
 
 	@staticmethod
-	def create(name):
+	def create(name, scoutnetID):
 		if len(name) < 2:
 			raise ValueError("Invalid name %s" % (name))
-		return ScoutGroup(id=ScoutGroup.getid(name), name=name)
+		return ScoutGroup(id=ScoutGroup.getid(name), name=name, scoutnetID=scoutnetID)
 	
 	@staticmethod
 	def getgroupsforuser(user):
 		if user.groupaccess != None:
 			return [user.groupaccess.get()]
-		else:
+		elif user.hasadminaccess:
 			return ScoutGroup.query().fetch(100)
+		else:
+			return []
 
 	def getname(self):
 		return self.name
@@ -73,25 +97,26 @@ class Troop(ndb.Model):
 	scoutgroup = ndb.KeyProperty(kind=ScoutGroup)
 	defaultstarttime = ndb.StringProperty(default="18:30")
 	rapportID = ndb.IntegerProperty()
+	semester_key = ndb.KeyProperty(kind=Semester)
 
 	@staticmethod
 	def getid(name, scoutgroup_key):
 		return name.lower().replace(' ', '')+scoutgroup_key.id()
 
 	@staticmethod
-	def create(name, scoutgroup_key):
-		return Troop(id=Troop.getid(name, scoutgroup_key), name=name, scoutgroup=scoutgroup_key)
+	def create(name, scoutgroup_key, semester_key):
+		return Troop(id=Troop.getid(name, scoutgroup_key), name=name, scoutgroup=scoutgroup_key, semester_key=semester_key)
 
 	def getname(self):
 		return self.name
 
-class Person(ndb.Model):
+class Person(PropertyWriteTracker):
 	firstname = ndb.StringProperty(required=True)
 	lastname = ndb.StringProperty(required=True)
 	birthdate = ndb.DateProperty(required=True) # could be a computed property from personnr
 	personnr = ndb.StringProperty()
 	female = ndb.BooleanProperty(required=True)
-	troop = ndb.KeyProperty(kind=Troop) # assigned default troop in scoutnet, can be member of multiple troops 
+	troop = ndb.KeyProperty(kind=Troop) # assigned default troop in scoutnet, can be member of multiple troops
 	patrool = ndb.StringProperty()
 	scoutgroup = ndb.KeyProperty(kind=ScoutGroup)
 	notInScoutnet = ndb.BooleanProperty()
@@ -99,42 +124,32 @@ class Person(ndb.Model):
 	email = ndb.StringProperty()
 	phone = ndb.StringProperty()
 	mobile = ndb.StringProperty()
-	_dirty = False
-
-	def __init__(self, *args, **kw):
-		self._dirty = False
-		super(Person, self).__init__(*args, **kw)
-
-	def __setattr__(self, key, value):
-		if key[:1] != '_': # avoid all system properties and "_dirty"
-			if self.__getattribute__(key) != value:
-				self._make_dirty()
-		super(Person, self).__setattr__(key, value)
-
-	def _make_dirty(self):
-		self._dirty = True
-
-	def _not_dirty(self):
-		self._dirty = False
+	street = ndb.StringProperty()
+	zip_code = ndb.StringProperty()
+	zip_name = ndb.StringProperty()
 
 	@staticmethod
 	def create(id, firstname, lastname, personnr, female):
-		return Person(id=id,
+		person = Person(id=id,
 			firstname=firstname,
 			lastname=lastname,
-			birthdate=Person.persnumbertodate(personnr),
-			female=female,
-			personnr=personnr)
+			female=female)
+		person.setpersonnr(personnr)
+		return person
 
 	@staticmethod
-	def createlocal(firstname, lastname, personnr, female):
-		return Person(
+	def createlocal(firstname, lastname, personnr, female, mobile, phone, email):
+		person = Person(
+			id=personnr.replace('-', ''), # using personnr as id for local persons
 			firstname=firstname,
 			lastname=lastname,
-			birthdate=Person.persnumbertodate(personnr),
 			female=female,
-			personnr=personnr,
+			mobile=mobile,
+			phone=phone,
+			email=email,
 			notInScoutnet=True)
+		person.setpersonnr(personnr)
+		return person
 
 	@staticmethod
 	def persnumbertodate(pnr):
@@ -142,25 +157,29 @@ class Person(ndb.Model):
 			return datetime.datetime.strptime("19450101", "%Y%m%d").date()
 		else:
 			return datetime.datetime.strptime(pnr[:8], "%Y%m%d").date()
-	
+
+	@staticmethod
+	def getIsFemale(personnummer):
+		return False if int(personnummer[-2])&1 == 1 else True
+		
 	def setpersonnr(self, pnr):
 		self.personnr = pnr.replace('-', '')
 		self.birthdate = Person.persnumbertodate(pnr)
-	
+
 	def getpersonnr(self):
 		return self.personnr.replace('-', '')
-		
+
 	def getbirthdatestring(self):
 		return self.birthdate.strftime("%Y-%m-%d")
 	def getpersnumberstr(self):
 		return self.birthdate.strftime("%Y%m%d0000")
 
 	def getname(self):
-		pattern = re.compile("\( -")
-		fn = self.firstname #pattern.split(self.firstname)[0][:10]
+		pattern = re.compile("[\( -]")
+		fn = self.firstname
 		ln = pattern.split(self.lastname)[0][:12]
 		return fn + " " + ln
-	
+
 	def getyearsoldthisyear(self, year):
 		return year - self.birthdate.year
 
@@ -173,18 +192,44 @@ class Meeting(ndb.Model):
 	attendingPersons = ndb.KeyProperty(kind=Person, repeated=True) # list of attending persons' keys
 
 	@staticmethod
+	def __getMemcacheKeyString(troop_key, semester_key):
+		return 'tms:' + str(troop_key) + "/" + str(semester_key)
+
+	@staticmethod
 	def create(troop_key, name, datetime, duration, semester_key):
-		return Meeting(id=datetime.strftime("%Y%m%d%H%M")+str(troop_key.id())+str(semester_key.id()),
+		m = Meeting(id=datetime.strftime("%Y%m%d%H%M")+str(troop_key.id())+str(semester_key.id()),
 			datetime=datetime,
 			name=name,
 			troop=troop_key,
 			duration=duration,
 			semester=semester_key
 			)
+		troopmeeting_keys = memcache.get(Meeting.__getMemcacheKeyString(troop_key, semester_key))
+		if troopmeeting_keys is not None and m.key not in troopmeeting_keys:
+			troopmeeting_keys.append(m.key)
+			memcache.replace(Meeting.__getMemcacheKeyString(troop_key, semester_key), troopmeeting_keys)
+		return m
 
 	@staticmethod
-	def gettroopmeetings(troop_key, semester_key): # TODO: memcache here!
-		return Meeting.query(Meeting.troop==troop_key, Meeting.semester==semester_key).order(-Meeting.datetime)
+	def gettroopmeetings(troop_key, semester_key):
+		troopmeetings = []
+		troopmeeting_keys = memcache.get(Meeting.__getMemcacheKeyString(troop_key, semester_key))
+		if troopmeeting_keys is None:
+			troopmeeting_keys = Meeting.query(Meeting.troop==troop_key, Meeting.semester==semester_key).fetch(keys_only=True)
+			memcache.add(Meeting.__getMemcacheKeyString(troop_key, semester_key), troopmeeting_keys)
+		for tm_key in troopmeeting_keys:
+			m = tm_key.get()
+			if m != None:
+				troopmeetings.append(m)
+		troopmeetings.sort(key=lambda x:x.datetime, reverse=True)
+		return troopmeetings
+
+	def delete(self):
+		self.key.delete()
+		troopmeeting_keys = memcache.get(Meeting.__getMemcacheKeyString(self.troop, self.semester))
+		if troopmeeting_keys is not None:
+			troopmeeting_keys.remove(self.key)
+			memcache.replace(Meeting.__getMemcacheKeyString(self.troop, self.semester), troopmeeting_keys)
 
 	def commit(self):
 		self.put()
@@ -209,7 +254,7 @@ class TroopPerson(ndb.Model):
 	@staticmethod
 	def __getMemcacheKeyString(troop_key):
 		return 'tps:' + str(troop_key)
-	
+
 	def delete(self):
 		self.key.delete()
 		troopperson_keys = memcache.get(TroopPerson.__getMemcacheKeyString(self.troop))
@@ -264,6 +309,7 @@ class UserPrefs(ndb.Model):
 	activeSemester = ndb.KeyProperty(kind=Semester)
 	groupaccess = ndb.KeyProperty(kind=ScoutGroup, required=False, default=None)
 	groupadmin = ndb.BooleanProperty(required=False, default=False)
+	email = ndb.StringProperty(required=False)
 
 	def hasAccess(self):
 		return self.hasaccess
@@ -276,7 +322,14 @@ class UserPrefs(ndb.Model):
 
 	def getname(self):
 		return self.name
-
+		
+	def getemail(self):
+		if self.email != None and len(self.email) != 0:
+			return self.email
+		if '@' in self.name:
+			return self.name
+		return self.name + '@gmail.com'
+		
 	@staticmethod
 	def current():
 		cu = users.get_current_user()
@@ -296,15 +349,27 @@ class UserPrefs(ndb.Model):
 		if userprefs is not None:
 			return userprefs
 		else:
-			usersresult = UserPrefs.query(UserPrefs.userid == user.user_id()).fetch()
+			userprefs = UserPrefs.get_by_id(user.user_id()) # new records have user_id as id
+			if userprefs != None:
+				userprefs.updateMemcache()
+				return userprefs
+			usersresult = UserPrefs.query(UserPrefs.userid == user.user_id()).fetch() # Fetching old records from userid
 			if len(usersresult) == 0:
 				userprefs = UserPrefs.create(user, users.is_current_user_admin(), users.is_current_user_admin())
 				userprefs.put()
 			else:
-				userprefs = usersresult[0]
-				userprefs.updateMemcache()
+				olduser = usersresult[0]
+				# old record, update to a new with user_id as id and email
+				if olduser != None:
+					userprefs = UserPrefs.create(user, olduser.hasAccess(), olduser.isAdmin())
+					userprefs.activeSemester = olduser.activeSemester 
+					userprefs.groupaccess = olduser.groupaccess
+					userprefs.groupadmin = olduser.groupadmin
+					userprefs.put()
+					olduser.key.delete()	
+			userprefs.updateMemcache()
 			return userprefs
 
 	@staticmethod
 	def create(user, access=False, hasadminaccess=False):
-		return UserPrefs(userid=user.user_id(), name=user.nickname(), hasaccess=access, hasadminaccess=hasadminaccess)
+		return UserPrefs(id=user.user_id(), userid=user.user_id(), name=user.nickname(), email=user.email(), hasaccess=access, hasadminaccess=hasadminaccess)

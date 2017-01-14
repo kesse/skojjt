@@ -10,9 +10,11 @@ from google.appengine.ext.ndb import metadata
 import StringIO
 import urllib2
 
-def RunScoutnetImport(groupid, api_key, user, commit = True):
+def RunScoutnetImport(groupid, api_key, user, semester):
+	commit = True
 	data = None
 	result = []
+	logging.info('Importing semester=%s', semester.getname())
 	if groupid == None or groupid == "" or api_key == None or api_key == "":
 		result.append(u"Du måste ange både kårid och api nyckel")
 		return result
@@ -20,6 +22,7 @@ def RunScoutnetImport(groupid, api_key, user, commit = True):
 	try:
 		data = scoutnet.GetScoutnetMembersAPIJsonData(groupid, api_key)
 	except urllib2.HTTPError as e:
+		logging.error('Scoutnet http error=%s', str(e))
 		result.append(u"Kunde inte läsa medlämmar från scoutnet, fel=%s" % (str(e)))
 		if e.code == 401:
 			result.append(u"Kontrollera: api nyckel och kårid.")
@@ -27,10 +30,10 @@ def RunScoutnetImport(groupid, api_key, user, commit = True):
 		
 	if data != None:
 		importer = ScoutnetImporter()
-		importer.commit = commit
-		result = importer.DoImport(data)
-		if user.groupaccess != importer.importedScoutGroup_key:
+		result = importer.DoImport(data, semester)
+		if user.groupaccess != importer.importedScoutGroup_key or user.hasaccess != True:
 			user.groupaccess = importer.importedScoutGroup_key
+			user.hasaccess = True
 			user.put()
 	return result
 	
@@ -66,31 +69,21 @@ def GetOrgnrAndKommunIDForGroup(groupname):
 				return str(row['id']), str(row['orgnr'])
 	return "", ""
 
-def GetOrCreateCurrentSemester(commit=True):
-	thisdate = datetime.datetime.now()
-	ht = False if thisdate.month>6 else True
-	semester = Semester.get_by_id(Semester.getid(thisdate.year + 1, ht), use_memcache=True)
-	if semester == None:
-		semester = Semester.create(thisdate.year + 1, ht)
-		if commit:
-			semester.put()
-	return semester
-
 class ScoutnetImporter:
 	report = []
-	commit = False
+	commit = True
 	rapportID = 1
 	importedScoutGroup_key = None
 	
 	def __init__(self):
 		self.report = []
-		commit = False
+		commit = True
 		rapportID = 1
 	
 	def GetOrCreateTroop(self, name, group_key, semester_key):
 		if len(name) == 0:
 			return None
-		troop = Troop.get_by_id(Troop.getid(name, group_key), use_memcache=True)
+		troop = Troop.get_by_id(Troop.getid(name, group_key, semester_key), use_memcache=True)
 		if troop == None:
 			self.report.append("Ny avdelning %s" % (name))
 			troop = Troop.create(name, group_key, semester_key)
@@ -107,7 +100,6 @@ class ScoutnetImporter:
 		if group == None:
 			self.report.append(u"Ny kår %s, id=%s" % (name, str(scoutnetID)))
 			group = ScoutGroup.create(name, scoutnetID)
-			group.activeSemester = GetOrCreateCurrentSemester(self.commit).key
 			group.scoutnetID = scoutnetID
 			group.foreningsID, group.organisationsnummer = GetOrgnrAndKommunIDForGroup(name)
 			if self.commit:
@@ -121,7 +113,7 @@ class ScoutnetImporter:
 		self.importedScoutGroup_key = group.key
 		return group
 
-	def DoImport(self, data):
+	def DoImport(self, data, semester):
 		if not self.commit:
 			self.report.append("*** sparar inte, test mode ***")
 
@@ -134,6 +126,9 @@ class ScoutnetImporter:
 		if len(list) < 1:
 			self.report.append("Error, too few rows=%d" % len(list))
 			return self.report
+		
+		personsToSave = []
+		troopPersonsToSave = []
 
 		for p in list:
 			id = int(p["id"])
@@ -166,13 +161,15 @@ class ScoutnetImporter:
 			person.street = p["street"]
 			person.zip_code = p["zip_code"]
 			person.zip_name = p["zip_name"]
-
+			person.troop_roles = p["troop_roles"]
+			person.group_roles = p["group_roles"]
+			
 			scoutgroup = self.GetOrCreateGroup(p["group"], p["group_id"])
 			person.scoutgroup = scoutgroup.key
 			if len(p["troop"]) == 0:
 				self.report.append("Ingen avdelning vald för %s %s %s" % (id, p["firstname"], p["lastname"]))
-
-			troop = self.GetOrCreateTroop(p["troop"], person.scoutgroup, scoutgroup.activeSemester)
+				
+			troop = self.GetOrCreateTroop(p["troop"], scoutgroup.key, semester.key)
 			troop_key = troop.key if troop != None else None
 			new_troop = person.troop != troop_key
 			person.troop = troop_key
@@ -183,7 +180,7 @@ class ScoutnetImporter:
 			if person._dirty:
 				self.report.append(u"Sparar ändringar:%s %s %s" % (id, p["firstname"], p["lastname"]))
 				if self.commit:
-					person.put()
+					personsToSave.append(person)
 
 			if new_troop:
 				if person.troop:
@@ -193,7 +190,8 @@ class ScoutnetImporter:
 
 				if troop_key != None:
 					if self.commit:
-						TroopPerson.create(troop_key, person.key, False).put()
+						tp = TroopPerson.create(troop_key, person.key, False)
+						troopPersonsToSave.append(tp)
 					self.report.append(u"Ny avdelning '%s' för:%s %s" % (p["troop"], p["firstname"], p["lastname"]))
 
 			if person.removed:
@@ -204,6 +202,10 @@ class ScoutnetImporter:
 						for tp in tps:
 							tp.delete()
 						person.key.delete()
+			
+			if self.commit:
+				ndb.put_multi(personsToSave)
+				ndb.put_multi(troopPersonsToSave)
 
 		return self.report
 				
@@ -220,6 +222,8 @@ def DeleteAllData():
 	ndb.delete_multi(entries)
 	entries = Semester.query().fetch(1000, keys_only=True)
 	ndb.delete_multi(entries)
+	#entries = UserPrefs.query().fetch(1000, keys_only=True)
+	#ndb.delete_multi(entries)
 	ndb.get_context().clear_cache() # clear memcache
 
 def dofixsgroupids():
@@ -239,14 +243,6 @@ def dosettroopsemester():
 		troop.semester_key = semester_key
 		logging.info("updating semester for: %s", troop.getname())
 		troop.put()
-
-def ForceSemesterForAll(activeSemester):
-	for u in UserPrefs.query().fetch(1000):
-		u.activeSemester = activeSemester.key
-		u.put()
-	for m in Meeting.query().fetch(1000):
-		m.semester = activeSemester.key
-		m.put()
 
 def UpdateSchemaTroopPerson():
 	entries = TroopPerson().query().fetch()

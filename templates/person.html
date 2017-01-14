@@ -21,6 +21,7 @@
 			</div>
 			{% endif %}
 		  {% if not hasPerson or (hasPerson and ep.notInScoutnet) %}
+		  <em>OBS! Personen kommer inte registreras i <a href="https://www.scoutnet.se/">scoutnet</a> automatiskt!</em>
 		  {% endif %}
 		  <div class="form-group">
 			<label for="firstname">Förnamn</label>
@@ -76,7 +77,7 @@
 				<td>
 					{% set troop = tp.troop.get() %}
 					{% set group_key = troop.scoutgroup %}
-					<a href="/start/{{group_key.urlsafe()}}/{{troop.key.urlsafe()}}/">{{tp.gettroopname()}}</a>{% if tp.leader %} - Ledare{% endif %}
+					<a href="/start/{{group_key.urlsafe()}}/{{troop.key.urlsafe()}}/">{{tp.getFullTroopname()}}</a>{% if tp.leader %} - Ledare{% endif %}
 				</td>
 				<td>
 					<a href="removefromtroop?troop={{troop.key.urlsafe()}}" class="btn btn-sm btn-danger">Ta bort från avdelning</a>

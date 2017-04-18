@@ -22,7 +22,7 @@ app.debug = True
 # the App Engine WSGI application server.
 
 
-reload(sys)  
+reload(sys)
 sys.setdefaultencoding('utf8')
 
 
@@ -40,7 +40,7 @@ def home():
 						   heading='Hem',
 						   items=[],
 						   breadcrumbs=breadcrumbs,
-						   user=UserPrefs.current(),
+						   user=user,
 						   starturl=starturl,
 						   personsurl=personsurl
 						   )
@@ -82,12 +82,14 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 		baselink += "settings/"
 		breadcrumbs.append({'link':baselink, 'text':section_title})
 		if request.method == "POST":
-			troop.defaultstarttime = request.form['defaultstarttime'] 
+			troop.defaultstarttime = request.form['defaultstarttime']
+			troop.defaultduration = int(request.form['defaultduration'])
 			troop.rapportID = int(request.form['rapportID'])
 			troop.put()
 			
 		form = htmlform.HtmlForm('troopsettings')
 		form.AddField('defaultstarttime', troop.defaultstarttime, 'Avdelningens vanliga starttid')
+		form.AddField('defaultduration', troop.defaultduration, u'Avdelningens vanliga mötestid i minuter', 'number')
 		form.AddField('rapportID', troop.rapportID, 'Unik rapport ID för kommunens närvarorapport', 'number')
 		return render_template('form.html',
 			heading=section_title,
@@ -101,7 +103,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			if not user.isGroupAdmin():
 				return "", 403
 			troop.delete()
-			troop = None
+			troop = None	
 			del breadcrumbs[-1]
 			baselink=breadcrumbs[-1]["link"]
 		else:
@@ -122,7 +124,9 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			return render_template('person.html',
 				heading=section_title,
 				baselink=baselink,
-				breadcrumbs=breadcrumbs)
+				breadcrumbs=breadcrumbs,
+				trooppersons=[],
+				scoutgroup=scoutgroup)
 		elif request.method == "POST":
 			pnr = request.form['personnummer'].replace('-','')
 			person = Person.createlocal(
@@ -141,8 +145,21 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			person.put()
 			troopperson = TroopPerson.create(troop_key, person.key, False)
 			troopperson.commit()
-			if scoutgroup.scoutnetID != None and scoutgroup.apikey_waitinglist != None:
-				scoutnet.AddPersonToWaitinglist(scoutgroup, person.firstname, person.lastname, person.personnr, person.email, request.form['street'], request.form['zip_code'], request.form['zip_name'], person.mobile, person.phone)
+			if scoutgroup.canAddToWaitinglist():
+				if scoutnet.AddPersonToWaitinglist(
+						scoutgroup,
+						person.firstname,
+						person.lastname,
+						person.personnr,
+						person.email,
+						person.street,
+						person.zip_code,
+						person.zip_name,
+						person.mobile,
+						person.phone,
+						troop):
+					person.notInScoutnet = False
+					person.put()
 			return redirect(breadcrumbs[-2]['link'])
 	
 	if request.method == "GET" and len(request.args) > 0 and "action" in request.args:
@@ -154,6 +171,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			name = request.args['name'].lower()
 			if len(name) < 2:
 				return "[]"
+			logging.debug("name=%s", name)
 			jsonstr='['
 			personCounter = 0
 			for person in Person().query(Person.scoutgroup == sgroup_key):
@@ -181,13 +199,9 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			semester_url = request.args["semester"]
 			user.activeSemester = ndb.Key(urlsafe=semester_url)
 			user.put()
-		elif action == "nextsemester":
-			semester = Semester.getOrCreateNext()
-			return semester.getname()
 		else:
 			logging.error('unknown action=' + action)
-			abort(404)
-			return ""
+			return "", 404
 
 	if request.method == "POST" and len(request.form) > 0 and "action" in request.form:
 		action=request.form["action"]
@@ -218,10 +232,10 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 					int(mduration))
 			else:
 				meeting = ndb.Key(urlsafe=key_url).get()
-				meeting.name = mname
-				meeting.datetime = dt
-				meeting.duration = int(mduration)
 
+			meeting.name = mname
+			meeting.datetime = dt
+			meeting.duration = int(mduration)
 			meeting.commit()
 			return redirect(breadcrumbs[-1]['link'])
 		elif action == "deletemeeting":
@@ -231,15 +245,13 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			return redirect(breadcrumbs[-1]['link'])
 		else:
 			logging.error('unknown action=' + action)
-			abort(404)
-			return ""
+			return "", 404
 
 	# render main pages
 	if scoutgroup == None:
 		return render_template('index.html', 
 			heading=section_title, 
 			baselink=baselink,
-			addlink=True,
 			items=ScoutGroup.getgroupsforuser(user),
 			breadcrumbs=breadcrumbs)
 	elif troop==None:
@@ -425,7 +437,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 				attendances=attendances,
 				breadcrumbs=breadcrumbs,
 				allowance=allowance,
-				defaultstarttime=troop.defaultstarttime,
+				troop=troop,
 				user=user)
 
 @app.route('/persons')
@@ -470,7 +482,7 @@ def persons(sgroup_url=None, person_url=None, action=None):
 				for tp in tps:
 					tp.delete()
 			return redirect(breadcrumbs[-1]['link'])
-		if action == "removefromtroop" or action == "setasleader" or action == "removeasleader":
+		elif action == "removefromtroop" or action == "setasleader" or action == "removeasleader":
 			troop_key = ndb.Key(urlsafe=request.args["troop"])
 			tps = TroopPerson.query(TroopPerson.person == person.key, TroopPerson.troop == troop_key).fetch(1)
 			if len(tps) == 1:
@@ -480,6 +492,28 @@ def persons(sgroup_url=None, person_url=None, action=None):
 				else:
 					tp.leader = (action == "setasleader")
 					tp.put()
+		elif action == "addtowaitinglist":
+			scoutgroup = person.scoutgroup.get()
+			troop = None
+			tps = TroopPerson.query(TroopPerson.person == person.key).fetch(1)
+			if len(tps) == 1:
+				troop = tps[0].troop.get()
+			scoutgroup = person.scoutgroup.get()
+			if scoutgroup.canAddToWaitinglist():
+				if scoutnet.AddPersonToWaitinglist(
+						scoutgroup,
+						person.firstname,
+						person.lastname,
+						person.personnr,
+						person.email,
+						person.street,
+						person.zip_code,
+						person.zip_name,
+						person.mobile,
+						person.phone,
+						troop):
+					person.notInScoutnet = False
+					person.put()
 		else:
 			logging.error('unknown action=' + action)
 			abort(404)
@@ -490,7 +524,6 @@ def persons(sgroup_url=None, person_url=None, action=None):
 		return render_template('index.html', 
 			heading=section_title, 
 			baselink=baselink,
-			addlink=True,
 			items=ScoutGroup.getgroupsforuser(user),
 			breadcrumbs=breadcrumbs,
 			username=user.getname())
@@ -499,7 +532,6 @@ def persons(sgroup_url=None, person_url=None, action=None):
 		return render_template('index.html',
 			heading=section_title,
 			baselink=baselink,
-			addlink=True,
 			items=Person.query(Person.scoutgroup == sgroup_key).order(Person.firstname, Person.lastname).fetch(), # TODO: memcache
 			breadcrumbs=breadcrumbs,
 			username=user.getname())
@@ -507,12 +539,10 @@ def persons(sgroup_url=None, person_url=None, action=None):
 		return render_template('person.html',
 			heading=section_title,
 			baselink='/persons/' + scoutgroup.key.urlsafe() + '/',
-			addlink=True,
 			trooppersons=TroopPerson.query(TroopPerson.person == person.key).fetch(), # TODO: memcache
 			ep=person,
-			#attendances=Attendance.query(Attendance.person==person.key).fetch(), # todo: filter by semester
-			breadcrumbs=breadcrumbs,
-			username=user.getname())
+			scoutgroup=scoutgroup,
+			breadcrumbs=breadcrumbs)
 	
 @app.route('/scoutgroupinfo/<sgroup_url>')
 @app.route('/scoutgroupinfo/<sgroup_url>/', methods = ['POST', 'GET'])
@@ -717,7 +747,6 @@ def adminaccess(userprefs_url=None):
 			return render_template('userprefs.html',
 				heading=section_title,
 				baselink=baselink,
-				addlink=True,
 				userprefs=userprefs,
 				breadcrumbs=breadcrumbs,
 				scoutgroups=ScoutGroup.query().fetch())

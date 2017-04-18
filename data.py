@@ -106,12 +106,17 @@ class ScoutGroup(ndb.Model):
 	def getname(self):
 		return self.name
 
+	def canAddToWaitinglist(self):
+		return self.scoutnetID != None and self.scoutnetID != "" and self.apikey_waitinglist != None and self.apikey_waitinglist != ""
+
 # avdelning
 class Troop(ndb.Model):
 	name = ndb.StringProperty()
 	scoutgroup = ndb.KeyProperty(kind=ScoutGroup)
 	defaultstarttime = ndb.StringProperty(default="18:30")
+	defaultduration = ndb.IntegerProperty(default=90)
 	rapportID = ndb.IntegerProperty()
+	scoutnetID = ndb.IntegerProperty(required=False, default=0)
 	semester_key = ndb.KeyProperty(kind=Semester)
 
 	@staticmethod

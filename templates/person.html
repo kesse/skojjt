@@ -20,7 +20,7 @@
 				{% endif %}
 			</div>
 			{% endif %}
-		  {% if not hasPerson or (hasPerson and ep.notInScoutnet) %}
+		  {% if (not hasPerson and not scoutgroup.canAddToWaitinglist()) or (hasPerson and ep.notInScoutnet) %}
 		  <em>OBS! Personen kommer inte registreras i <a href="https://www.scoutnet.se/">scoutnet</a> automatiskt!</em>
 		  {% endif %}
 
@@ -28,7 +28,7 @@
 				<div class="col-xs-12 col-sm-6 col-md-4">
 				  <div class="form-group">
 					<label for="firstname">Förnamn</label>
-					<input type="text" class="form-control" size='50' required="1" placeholder="Förnamn" name="firstname" id="firstname" value="{% if ep %}{{ep.firstname}}{% endif %}" {% if ep %}readonly="1"{% endif %}/>
+						<input type="text" class="form-control" size='50' required="1" placeholder="Förnamn" name="firstname" id="firstname" value="{% if ep %}{{ep.firstname}}{% endif %}" {% if ep %}readonly="1"{% endif %}/>
 				  </div>
 				</div>
 				<div class="col-xs-12 col-sm-6 col-md-4">
@@ -40,7 +40,7 @@
 				<div class="col-xs-12 col-sm-6 col-md-4">
 					<div class="form-group">
             <label for="personnummer">Personnummer</label>
-            <input type="text" class="form-control" pattern="[0-9]{12}" size="12" required="1" class="form-control" name="personnummer" id="personnummer" value="{% if ep %}{{ep.personnr}}{% endif %}" {% if ep %}readonly="1"{% endif %}/>
+						<input type="text" class="form-control" pattern="[0-9]{12}" size="12" required="1" placeholder="YYYYMMDDXXXX" class="form-control" name="personnummer" id="personnummer" value="{% if ep %}{{ep.personnr}}{% endif %}" {% if ep %}readonly="1"{% endif %}/>
 					</div>
 				</div>
 				<div class="col-xs-12 col-sm-6 col-md-4">
@@ -52,7 +52,7 @@
 				<div class="col-xs-12 col-sm-6 col-md-4">
 					<div class="form-group">
             <label for='zip_code'>Postnummer</label>
-            <input type='text' class="form-control" pattern='[0-9]{5}' size='5' name='zip_code' id='zip_code' value='{% if ep %}{{ep.zip_code}}{% endif %}' {% if ep %}readonly="1"{% endif %}/>
+						<input type='text' class="form-control" pattern='[0-9]{5}' size='5' name='zip_code' id='zip_code' placeholder="#####" value='{% if ep %}{{ep.zip_code}}{% endif %}' {% if ep %}readonly="1"{% endif %}/>
 					</div>
 				</div>
 				<div class="col-xs-12 col-sm-6 col-md-4">
@@ -64,13 +64,13 @@
 				<div class="col-xs-12 col-sm-6 col-md-4">
 					<div class="form-group">
             <label for='mobile'>Mobiltelefon</label>
-            <input type='text' class="form-control" pattern='[0-9]{6,10}' size='10' name='mobile' id='mobile' value='{% if ep %}{{ep.mobile}}{% endif %}' {% if ep %}readonly="1"{% endif %}/>
+						<input type='text' class="form-control" size='10' name='mobile' id='mobile' value='{% if ep %}{{ep.mobile}}{% endif %}' {% if ep %}readonly="1"{% endif %}/>
 					</div>
 				</div>
 				<div class="col-xs-12 col-sm-6 col-md-4">
 					<div class="form-group">
             <label for='phone'>Telefon</label>
-            <input type='text' class="form-control" pattern='[0-9]{6,10}' size='10' name='phone' id='phone' value='{% if ep %}{{ep.phone}}{% endif %}' {% if ep %}readonly="1"{% endif %}/>
+						<input type='text' class="form-control" size='10' name='phone' id='phone' value='{% if ep %}{{ep.phone}}{% endif %}' {% if ep %}readonly="1"{% endif %}/>
 					</div>
 				</div>
 				<div class="col-xs-12 col-sm-6 col-md-4">
@@ -88,7 +88,11 @@
 		</form>
 		<hr/>
  		{% if hasPerson and ep.notInScoutnet %}
-		<em>OBS! Personen finns inte i scoutnet</em>
+		<em>OBS! Personen finns inte i scoutnet</em><br/>
+		{% if (ep.notInScoutnet and scoutgroup.canAddToWaitinglist()) %}
+		<a href="addtowaitinglist" class="btn btn-lg btn-default">Lägg till i scoutnets kölista</a><br/>		
+		<strong>Personen hamnar i scoutnet under "medlemmar som inte godkänts". Du måste godkänna i scoutnet, sätta avgift och avdelning.</strong>
+		{% endif %}
 		<div class="btn-toolbar">
 		{% if not ep.removed %}
 		  <a href="deleteperson" class="btn btn-lg btn-danger">Ta bort</a>

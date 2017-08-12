@@ -39,28 +39,71 @@
         <input type="number" class="form-control" name="duration" id="mduration" value="{% if hasMeeting %}{{existingmeeting.duration}}{% endif %}"/>
       </div>
     </div>
+    <div class="col-xs-12 col-sm-6 col-md-4">
+      <div class="form-group">
+        <label for="mstoptime">Sluttid (för att räkna ut minuter)</label>
+        <input type="time" class="form-control" id="mstoptime" />
+      </div>
+    </div>
   </div>
-  {% if not hasMeeting %}
+
   <script>
-	$("#mdate").val(getTodaysDateString());
+      {% if not hasMeeting %}
+        $("#mdate").val(getTodaysDateString());
 
-	$("#mtype").change(function() {
-      var value = $( this ).val();
+        $("#mtype").change(function() {
+            var value = $( this ).val();
 
-      if (value === 'mote') {
-          $("#mname").val("Möte");
-          $("#starttime").val("{{troop.defaultstarttime}}");
-          $("#mduration").val("{{troop.defaultduration}}");
-      } else {
-          $("#mname").val("Läger");
-          $("#starttime").val("08:00");
-          $("#mduration").val("480");
+            if (value === 'mote') {
+                $("#mname").val("Möte");
+                $("#starttime").val("{{troop.defaultstarttime}}");
+                $("#mduration").val("{{troop.defaultduration}}");
+            } else {
+                $("#mname").val("Läger");
+                $("#starttime").val("08:00");
+                $("#mduration").val("480");
+            }
+        });
+
+        $("#mtype").change();
+      {% endif %}
+
+      $("#mstoptime").change(function() {
+          var from = $("#starttime").val();
+          var to = $( this ).val();
+
+
+          var startTime = new Date('2012/10/09 ' + from);
+          var endTime = new Date('2012/10/09 ' + to);
+          var difference = endTime.getTime() - startTime.getTime(); // This will give difference in milliseconds
+          var resultInMinutes = Math.round(difference / 60000);
+
+          $("#mduration").val(resultInMinutes);
+      });
+
+      $("#mduration").change(function() {
+          var from = $("#starttime").val();
+          var value = $( this ).val();
+
+          var startTime = new Date('2012/10/09 ' + from);
+
+          var newDateObj = new Date(startTime.getTime() + value*60000);
+
+          var hours = addZero(newDateObj.getHours());
+          var minutes = addZero(newDateObj.getMinutes());
+
+          $("#mstoptime").val(hours + ':' + minutes);
+      });
+
+      function addZero(i) {
+          if (i < 10) {
+              i = "0" + i;
+          }
+          return i;
       }
-  });
 
-  $("#mtype").change();
+      $("#mduration").change();
   </script>
-  {% endif %}
   <div class="row">
     <div class="col-xs-12">
       <button type="submit" name="submit" class="btn btn-lg btn-primary">{% if hasMeeting %}Spara{% else %}Lägg till{% endif %}</button>

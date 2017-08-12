@@ -224,6 +224,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 		elif action == "addmeeting" or action == "updatemeeting":
 			mname = request.form['name']
 			mdate = request.form['date']
+			mtype = request.form['type']
 			mtime = request.form['starttime'].replace('.', ':')
 			dtstring = mdate + "T" + mtime
 			mduration = request.form['duration']
@@ -232,13 +233,15 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 				meeting = Meeting.getOrCreate(troop_key, 
 					mname,
 					dt,
-					int(mduration))
+					int(mduration),
+				  mtype)
 			else:
 				meeting = ndb.Key(urlsafe=key_url).get()
 
 			meeting.name = mname
 			meeting.datetime = dt
 			meeting.duration = int(mduration)
+			meeting.type = mtype
 			meeting.commit()
 			return redirect(breadcrumbs[-1]['link'])
 		elif action == "deletemeeting":

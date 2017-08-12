@@ -243,6 +243,7 @@ class Person(PropertyWriteTracker):
 class Meeting(ndb.Model):
 	datetime = ndb.DateTimeProperty(auto_now_add=True, required=True)
 	name = ndb.StringProperty(required=True)
+	type = ndb.StringProperty(required=False)
 	troop = ndb.KeyProperty(kind=Troop, required=True)
 	duration = ndb.IntegerProperty(default=90, required=True) #minutes
 	semester = ndb.KeyProperty(kind=Semester, required=False) # TODO: remove
@@ -257,19 +258,21 @@ class Meeting(ndb.Model):
 		return meetingDatetime.strftime("%Y%m%d%H%M")+str(troop_key.id())
 		
 	@staticmethod
-	def getOrCreate(troop_key, name, datetime, duration):
+	def getOrCreate(troop_key, name, datetime, duration, type):
 		m = Meeting.get_by_id(Meeting.getId(datetime, troop_key), use_memcache=True)
 		if m != None:
 			if m.name != name or m.duration != duration:
 				m.name = name
 				m.duration = duration
+				m.type = type
 				m.put()
 		else:
 			m = Meeting(id=Meeting.getId(datetime, troop_key),
 				datetime=datetime,
 				name=name,
 				troop=troop_key,
-				duration=duration
+				duration=duration,
+				type=type
 				)
 		troopmeeting_keys = memcache.get(Meeting.__getMemcacheKeyString(troop_key))
 		if troopmeeting_keys is not None and m.key not in troopmeeting_keys:
@@ -307,6 +310,8 @@ class Meeting(ndb.Model):
 		return self.datetime.strftime("%H:%M")
 	def getname(self):
 		return self.name
+	def gettype(self):
+		return self.type
 
 class TroopPerson(ndb.Model):
 	troop = ndb.KeyProperty(kind=Troop, required=True)

@@ -1,6 +1,5 @@
 # Scoutkåren Göta Lejon närvaro
 
-
 En fork av Skojjt som är utvecklad av Martin Green/Tynnereds scoutk?r.
 https://github.com/martin-green/skojjt
 
@@ -22,32 +21,24 @@ Den hostas på Google app engine. Vilket ger följande fördelar:
 Det finns rapportering av närvaro per grupp (avdelning) som Göteborgs kommun kräver.
 Vi har även möjlighet att koppla denna närvaro till andra partners, t ex Sensus studieförbund.
 
-Skojjt implementerar DAK för redovisning till Göteborgs kommun:
+Skojjt implementerar APN/DAK för redovisning till Göteborgs kommun:
+
 http://www.sverigesforeningssystem.se/dak-formatet/vad-ar-dak/
+http://ukf.umea.se/aktivitetskort
 
-###[Dokumentation](https://github.com/martin-green/skojjt/wiki)
+### [Dokumentation](https://github.com/martin-green/skojjt/wiki)
 
-
-###Hur man testar/utvecklar i Windows:
+### Hur man testar/utvecklar i Windows:
 * Klona git-repon till lokal dator.
 * Installera Python 2.7 och Google App Engine SDK (GAE).
 * Starta GAE. Lägg till skojjt med File|Add existing application...
 * Markera skojjt i listan kicka start, sen browse.
 * Man kan också köra Visual Studio Code för att få brytpunkter i koden.
 
-###Hur man testar/utvecklar i Linux:
+### Hur man testar/utvecklar i Linux:
 * Klona git-repon till lokal dator.
 * Installera Python 2.7 och Google App Engine SDK (GAE). 
-* Konfigurera GAE `gcloud init
-* Deploy kod `gcloud app deploy` frÃ¥n git mappen
+* Konfigurera GAE `gcloud init`
+* Deploy kod `gcloud app deploy` från git mappen
 * Testa appen `gcloud app browse`
 
-#### Kända fel
-Om du kör på windows och får felet:
-"ImportError: cannot import name RAND_egd"
-
-Editera:
-C:\Program Files (x86)\Google\google_appengine\google\appengine\dist27\socket.py
-
-ta bort: RAND_egd frÃ¥n rad 73:   
-from _ssl import RAND_add, RAND_egd, RAND_status, SSL_ERROR_ZERO_RETURN, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE, SSL_ERROR_WANT_X509_LOOKUP, SSL_ERROR_SYSCALL, SSL_ERROR_SSL, SSL_ERROR_WANT_CONNECT, SSL_ERROR_EOF, SSL_ERROR_INVALID_ERROR_CODE

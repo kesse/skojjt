@@ -227,6 +227,11 @@ class Person(PropertyWriteTracker):
 	def getname(self):
 		return self.firstname + " " + self.lastname
 
+	def getnameWithStatus(self):
+		if self.removed == True:
+			return self.firstname + " " + self.lastname + ' (B)'
+		return self.firstname + " " + self.lastname
+
 	def getyearsoldthisyear(self, year):
 		return year - self.birthdate.year
 	
@@ -239,6 +244,20 @@ class Person(PropertyWriteTracker):
 
 	def isBoardMember(self):
 		return self.group_roles != None and len(self.group_roles) > 0
+		
+	def getpatrol(self):
+		return self.patrool # TODO: fix spelling error
+
+	def setpatrol(self, patrolname):
+		self.patrool = patrolname # TODO: fix spelling error
+
+	def getMemberYearsString(self):
+		return ','.join(str(y) for y in self.member_years)
+
+	def getPostadress(self):
+		if self.zip_code is None or self.zip_name is None:
+			return ''
+		return self.zip_code + ' ' + self.zip_name
 
 
 class Meeting(ndb.Model):
@@ -313,6 +332,12 @@ class Meeting(ndb.Model):
 		return self.name
 	def gettype(self):
 		return self.type
+	def getendtime(self):
+		maxEndTime = self.datetime.replace(hour=23,minute=59,second=59)
+		endtime = self.datetime + datetime.timedelta(minutes=self.duration)
+		if endtime > maxEndTime:
+			endtime = maxEndTime # limit to the current day (to keep Stop time after Start time)
+		return endtime.strftime('%H:%M')
 
 class TroopPerson(ndb.Model):
 	troop = ndb.KeyProperty(kind=Troop, required=True)

@@ -8,6 +8,7 @@ import scoutnet
 import time
 import htmlform
 from dakdata import *
+import sensus
 from google.appengine.api import users
 from google.appengine.api import app_identity
 from google.appengine.api import mail
@@ -50,8 +51,8 @@ def home():
 
 @app.route('/start')
 @app.route('/start/')
-@app.route('/start/<sgroup_url>')
-@app.route('/start/<sgroup_url>/')
+@app.route('/start/<sgroup_url>', methods = ['POST', 'GET'])
+@app.route('/start/<sgroup_url>/', methods = ['POST', 'GET'])
 @app.route('/start/<sgroup_url>/<troop_url>', methods = ['POST', 'GET'])
 @app.route('/start/<sgroup_url>/<troop_url>/', methods = ['POST', 'GET'])
 @app.route('/start/<sgroup_url>/<troop_url>/<key_url>', methods = ['POST', 'GET'])
@@ -143,6 +144,8 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			person.street = request.form["street"]
 			person.zip_code = request.form["zip_code"]
 			person.zip_name = request.form["zip_name"]
+			if "patrol" in request.form:
+				person.setpatrol(request.form["patrol"])
 			person.scoutgroup = sgroup_key
 			logging.info("created local person %s", person.getname())
 			person.put()
@@ -180,11 +183,11 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			logging.debug("name=%s", name)
 			jsonstr='['
 			personCounter = 0
-			for person in Person().query(Person.scoutgroup == sgroup_key):
-				if person.getname().lower().find(name) != -1 and not person.removed:
+			for person in Person().query(Person.scoutgroup == sgroup_key).order(Person.removed, Person.firstname, Person.lastname):
+				if person.getname().lower().find(name) != -1:
 					if personCounter != 0:
 						jsonstr += ', '
-					jsonstr += '{"name": "'+person.getname()+'", "url": "' + person.key.urlsafe() + '"}'
+					jsonstr += '{"name": "'+person.getnameWithStatus()+'", "url": "' + person.key.urlsafe() + '"}'
 					personCounter += 1
 					if personCounter == 8:
 						break
@@ -205,6 +208,19 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			semester_url = request.args["semester"]
 			user.activeSemester = ndb.Key(urlsafe=semester_url)
 			user.put()
+		elif action == "removefromtroop" or action == "setasleader" or action == "removeasleader":
+			if troop == None or key_url == None:
+				raise ValueError('Missing troop or person')
+			person_key = ndb.Key(urlsafe=key_url)
+			tps = TroopPerson.query(TroopPerson.person == person_key, TroopPerson.troop == troop_key).fetch(1)
+			if len(tps) == 1:
+				tp = tps[0]
+				if action == "removefromtroop":
+					tp.delete()
+				else:
+					tp.leader = (action == "setasleader")
+					tp.put()
+			return "ok"
 		else:
 			logging.error('unknown action=' + action)
 			return "", 404
@@ -252,6 +268,23 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			logging.debug("deleting meeting=%s", meeting.getname())
 			meeting.delete()
 			return redirect(breadcrumbs[-1]['link'])
+		elif action == "savepatrol":
+			patrolperson = ndb.Key(urlsafe=request.form['person']).get()
+			patrolperson.setpatrol(request.form['patrolName'])
+			patrolperson.put()
+			return "ok"
+		elif action == "newtroop":
+			troopname = request.form['troopname']
+			troop_id = hash(troopname)
+			conflict = Troop.get_by_id(Troop.getid(troop_id, scoutgroup.key, user.activeSemester), use_memcache=True)
+			if conflict is not None:
+				return "Avdelningen finns redan", 404
+			troop = Troop.create(troopname, troop_id, scoutgroup.key, user.activeSemester)
+			troop.put()
+			troop_key = troop.key
+			logging.info("created local troop %s", troopname)
+			action = ""
+			return redirect(breadcrumbs[-1]['link'])
 		else:
 			logging.error('unknown action=' + action)
 			return "", 404
@@ -274,7 +307,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			semesters=Semester.query(),
 			troops=Troop.getTroopsForUser(sgroup_key, user),
 			breadcrumbs=breadcrumbs)
-	elif key_url!=None and key_url!="dak":
+	elif key_url!=None and key_url!="dak" and key_url!="sensus":
 		meeting = ndb.Key(urlsafe=key_url).get()
 		section_title = meeting.getname()
 		baselink += key_url + "/"
@@ -387,7 +420,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			dak.kort.NamnPaaKort = troop.getname()
 			# hack generate an "unique" id, if there is none
 			if troop.rapportID == None or troop.rapportID == 0:
-				troop.rapportID = random.randint(100, 1000000)
+				troop.rapportID = random.randint(1000, 1000000)
 				troop.put()
 
 			dak.kort.NaervarokortNummer = str(troop.rapportID)
@@ -416,6 +449,59 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			response = make_response(result)
 			response.headers['Content-Type'] = 'application/xml'
 			response.headers['Content-Disposition'] = 'attachment; filename=' + urllib.quote(str(dak.kort.NamnPaaKort), safe='') + '-' + semester.getname() + '.xml;'
+			return response
+		elif key_url == "sensus":
+			leaders = []
+			for tp in trooppersons:
+				if tp.leader:
+					leaders.append(tp.getname())
+
+			patrols = []
+			for p in persons:
+				if p.getpatrol() not in patrols:
+					patrols.append(p.getpatrol())
+					
+			sensusdata = sensus.SensusData()
+			sensusdata.foereningsNamn = scoutgroup.getname()
+			sensusdata.foreningsID = scoutgroup.foreningsID
+			sensusdata.organisationsnummer = scoutgroup.organisationsnummer
+			sensusdata.kommunID = scoutgroup.kommunID
+			sensusdata.verksamhetsAar = semester.getname()
+			
+			for patrol in patrols:
+				sensuslista = sensus.SensusLista()
+				sensuslista.NamnPaaKort = troop.getname() + "/" + patrol
+				
+				for tp in trooppersons:
+					p = personsDict[tp.person]
+					if p.getpatrol() != patrol:
+						continue
+					if tp.leader:
+						sensuslista.ledare.append(sensus.Deltagare(str(p.key.id()), p.firstname, p.lastname, p.getpersonnr(), True, p.email, p.mobile))
+					else:
+						sensuslista.deltagare.append(sensus.Deltagare(str(p.key.id()), p.firstname, p.lastname, p.getpersonnr(), False))
+					
+				for m in meetings:
+					sammankomst = sensus.Sammankomst(str(m.key.id()[:50]), m.datetime, m.duration, m.getname())
+					for tp in trooppersons:
+						p = personsDict[tp.person]
+						if p.getpatrol() != patrol:
+							continue
+						isAttending = tp.person in m.attendingPersons
+
+						if tp.leader:
+							sammankomst.ledare.append(sensus.Deltagare(str(p.key.id()), p.firstname, p.lastname, p.getpersonnr(), True, p.email, p.mobile, isAttending))
+						else:
+							sammankomst.deltagare.append(sensus.Deltagare(str(p.key.id()), p.firstname, p.lastname, p.getpersonnr(), False, p.email, p.mobile, isAttending))
+
+					sensuslista.Sammankomster.append(sammankomst)
+
+				sensusdata.listor.append(sensuslista)
+			
+			result = render_template(
+						'sensusnarvaro.html',
+						sensusdata=sensusdata)
+			response = make_response(result)
 			return response
 		else:
 			allowance = []
@@ -544,10 +630,10 @@ def persons(sgroup_url=None, person_url=None, action=None):
 			username=user.getname())
 	elif person==None:
 		section_title = 'Personer'
-		return render_template('index.html',
+		return render_template('persons.html',
 			heading=section_title,
 			baselink=baselink,
-			items=Person.query(Person.scoutgroup == sgroup_key).order(Person.firstname, Person.lastname).fetch(), # TODO: memcache
+			persons=Person.query(Person.scoutgroup == sgroup_key).order(Person.firstname, Person.lastname).fetch(), # TODO: memcache
 			breadcrumbs=breadcrumbs,
 			username=user.getname())
 	else:
@@ -761,10 +847,15 @@ def importTask(api_key, groupid, semester_key, taskProgress_key, user_key):
 		if progress is not None:
 			break
 		time.sleep(1) # wait for the eventual consistency
-	success = RunScoutnetImport(groupid, api_key, user, semester, progress)
-	if not success:
-		progress.failed = True
-	progress.info("Import klar")
+	try:
+		success = RunScoutnetImport(groupid, api_key, user, semester, progress)
+		if not success:
+			progress.info("Importen misslyckades")
+			progress.failed = True
+		else:
+			progress.info("Import klar")
+	except Exception as e: # catch all exceptions so that defer stops running it again (automatic retry)
+		progress.info("Importfel: " + str(e))
 	progress.done()
 
 

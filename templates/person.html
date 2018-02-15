@@ -41,7 +41,8 @@
 				<div class="col-xs-12 col-sm-6 col-md-4">
 					<div class="form-group">
             <label for="personnummer">Personnummer</label>
-						<input type="text" class="form-control" pattern="[0-9]{12}" size="12" required="1" placeholder="YYYYMMDDXXXX" class="form-control" name="personnummer" id="personnummer" value="{% if ep %}{{ep.personnr}}{% endif %}" {% if ep %}readonly="1"{% endif %}/>
+						<input type="text" class="form-control" pattern="[0-9]{12}" size="12" placeholder="YYYYMMDDXXXX" class="form-control" name="personnummer" id="personnummer" value="{% if ep %}{{ep.personnr}}{% endif %}" {% if ep %}readonly="1"{% endif %}/>
+						<input type="checkbox" name="should_not_add_to_scoutnet" value="1"> Saknar personnummer
 					</div>
 				</div>
 				<div class="col-xs-12 col-sm-6 col-md-4">

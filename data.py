@@ -203,14 +203,17 @@ class Person(PropertyWriteTracker):
 
 	@staticmethod
 	def persnumbertodate(pnr):
-		if pnr == '-':
+		if pnr == '-' or len(pnr) < 8:
 			return datetime.datetime.strptime("19450101", "%Y%m%d").date()
-		else:
+		else :
 			return datetime.datetime.strptime(pnr[:8], "%Y%m%d").date()
 
 	@staticmethod
 	def getIsFemale(personnummer):
-		return False if int(personnummer[-2])&1 == 1 else True
+		if (len(personnummer) > 2):
+			return False if int(personnummer[-2])&1 == 1 else True
+		else:
+			return False
 		
 	def setpersonnr(self, pnr):
 		self.personnr = pnr.replace('-', '')

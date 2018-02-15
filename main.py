@@ -133,6 +133,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 				scoutgroup=scoutgroup)
 		elif request.method == "POST":
 			pnr = request.form['personnummer'].replace('-','')
+			shoould_add_to_scoutnet = request.form['should_not_add_to_scoutnet'] != '1'
 			person = Person.createlocal(
 				request.form['firstname'], 
 				request.form['lastname'], 
@@ -151,7 +152,7 @@ def start(sgroup_url=None, troop_url=None, key_url=None):
 			person.put()
 			troopperson = TroopPerson.create(troop_key, person.key, False)
 			troopperson.commit()
-			if scoutgroup.canAddToWaitinglist():
+			if shoould_add_to_scoutnet and scoutgroup.canAddToWaitinglist():
 				try:
 					if scoutnet.AddPersonToWaitinglist(
 							scoutgroup,

@@ -103,7 +103,7 @@ def show(sgroup_url=None, troop_url=None, key_url=None):
 		elif request.method == "POST":
 			pnr = request.form['personnummer'].replace('-','')
 
-			shoould_add_to_scoutnet = False
+			shoould_add_to_scoutnet = True
 			if "should_not_add_to_scoutnet" in request.form:
 				shoould_add_to_scoutnet = request.form['should_not_add_to_scoutnet'] != '1'
 

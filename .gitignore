@@ -4,6 +4,5 @@
 .DS_Store
 *.ini
 members.csv
-
-.idea
 *.iml
+.idea

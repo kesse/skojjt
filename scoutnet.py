@@ -144,7 +144,7 @@ def AddPersonToWaitinglist(scoutgroup, firstname, lastname, personnummer, emaila
 	if 200 <= response.getcode() <= 201:
 		result_json = response.read()
 		logging.info("Added person: " + result_json)
-		sendRegistrationQueueInformationEmail(scoutgroup)
+		#sendRegistrationQueueInformationEmail(scoutgroup)
 		return True
 
 

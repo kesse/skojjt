@@ -12,4 +12,4 @@ dev_appserver.py $PWD
 
 Update database indexes
 
-gcloud datastore create-indexes ./index.yaml
+gcloud datastore indexes create ./index.yaml

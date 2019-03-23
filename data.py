@@ -162,7 +162,6 @@ class Person(PropertyWriteTracker):
 	lastname = ndb.StringProperty(required=True)
 	birthdate = ndb.DateProperty(required=True) # could be a computed property from personnr
 	personnr = ndb.StringProperty()
-	female = ndb.BooleanProperty(required=True)
 	troop = ndb.KeyProperty(kind=Troop) # assigned default troop in scoutnet, can be member of multiple troops
 	patrool = ndb.StringProperty()
 	scoutgroup = ndb.KeyProperty(kind=ScoutGroup)
@@ -171,6 +170,13 @@ class Person(PropertyWriteTracker):
 	email = ndb.StringProperty()
 	phone = ndb.StringProperty()
 	mobile = ndb.StringProperty()
+	alt_email = ndb.StringProperty()
+	mum_name = ndb.StringProperty()
+	mum_email = ndb.StringProperty()
+	mum_mobile = ndb.StringProperty()
+	dad_name = ndb.StringProperty()
+	dad_email = ndb.StringProperty()
+	dad_mobile = ndb.StringProperty()
 	street = ndb.StringProperty()
 	zip_code = ndb.StringProperty()
 	zip_name = ndb.StringProperty()
@@ -179,21 +185,19 @@ class Person(PropertyWriteTracker):
 	member_years = ndb.IntegerProperty(repeated=True) # a list of years this person have been imported, used for membership reporting
 
 	@staticmethod
-	def create(id, firstname, lastname, personnr, female):
+	def create(id, firstname, lastname, personnr):
 		person = Person(id=id,
 			firstname=firstname,
-			lastname=lastname,
-			female=female)
+			lastname=lastname)
 		person.setpersonnr(personnr)
 		return person
 
 	@staticmethod
-	def createlocal(firstname, lastname, personnr, female, mobile, phone, email):
+	def createlocal(firstname, lastname, personnr, mobile, phone, email):
 		person = Person(
 			id=personnr.replace('-', ''), # using personnr as id for local persons
 			firstname=firstname,
 			lastname=lastname,
-			female=female,
 			mobile=mobile,
 			phone=phone,
 			email=email,
@@ -214,6 +218,9 @@ class Person(PropertyWriteTracker):
 			return False if int(personnummer[-2])&1 == 1 else True
 		else:
 			return False
+	
+	def isFemale(self):
+		return Person.getIsFemale(self.personnr)
 		
 	def setpersonnr(self, pnr):
 		self.personnr = pnr.replace('-', '')
@@ -495,7 +502,7 @@ class UserPrefs(ndb.Model):
 
 	@staticmethod
 	def create(user, access=False, hasadminaccess=False):
-		return UserPrefs(id=user.user_id(), userid=user.user_id(), name=user.nickname(), email=user.email(), hasaccess=access, hasadminaccess=hasadminaccess)
+		return UserPrefs(id=user.user_id(), userid=user.user_id(), name=user.nickname(), email=user.email(), hasaccess=access, hasadminaccess=hasadminaccess, activeSemester=Semester.getOrCreateCurrent().key)
 
 
 class TaskProgress(ndb.Model):

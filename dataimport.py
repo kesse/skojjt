@@ -146,10 +146,6 @@ class ScoutnetImporter:
 		activePersons = set() # person.ids that was seen in this import
 
 		for p in list:
-			if p["sex"] != scoutnet.SEX_FEMALE and p["sex"] != scoutnet.SEX_MALE:
-				self.result.warning(u"%s %s %s har inget kön satt, hoppar över personen" % (p["id"], p["firstname"], p["lastname"]))
-				continue
-
 			id = int(p["id"])
 			person = Person.get_by_id(id, use_memcache=True) # need to be an integer due to backwards compatibility with imported data
 			personnr = p["personnr"].replace('-', '')
@@ -163,7 +159,6 @@ class ScoutnetImporter:
 			if person != None:
 				person.firstname = p["firstname"]
 				person.lastname = p["lastname"]
-				person.female = p["sex"] == scoutnet.SEX_FEMALE
 				person.setpersonnr(personnr)
 				if person.notInScoutnet != None:
 					person.notInScoutnet = False
@@ -172,8 +167,7 @@ class ScoutnetImporter:
 					id,
 					p["firstname"],
 					p["lastname"],
-					p["personnr"],
-					p["sex"] == scoutnet.SEX_FEMALE)
+					p["personnr"])
 				self.result.append("Ny person:%s %s %s" % (id, p["firstname"], p["lastname"]))
 			
 			activePersons.add(id)
@@ -183,6 +177,13 @@ class ScoutnetImporter:
 			person.email = p["email"]
 			person.phone = p["phone"]
 			person.mobile = p["mobile"]
+			person.alt_email = p["contact_alt_email"]
+			person.mum_name = p["mum_name"]
+			person.mum_email = p["mum_email"]
+			person.mum_mobile = p["mum_mobile"]
+			person.dad_name = p["dad_name"]
+			person.dad_email = p["dad_email"]
+			person.dad_mobile = p["dad_mobile"]
 			person.street = p["street"]
 			person.zip_code = p["zip_code"]
 			person.zip_name = p["zip_name"]

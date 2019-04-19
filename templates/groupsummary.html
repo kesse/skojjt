@@ -14,7 +14,7 @@
 	  </thead>
 	  <tbody>
 		{% for age in ages %}
-		<tr><td>{{age.age}}</td><td>{{age.women}}</td><td>{{age.men}}</td><td>{{age.women+age.men}}</td></tr>
+		<tr><td>{{age.age}}</td><td>{{age.women}} ({{age.womenTotal}})</td><td>{{age.men}} ({{age.menTotal}})</td><td>{{age.women+age.men}} ({{age.womenTotal+age.menTotal}})</td></tr>
 		{% endfor %}
 	 </tbody>
 	</table>

@@ -31,15 +31,22 @@ def scoutgroupsummary(sgroup_url):
 	class Item():
 		age = 0
 		women = 0
+		womenTotal = 0
 		men = 0
-		def __init__(self, age, women=0, men=0):
+		menTotal = 0
+		def __init__(self, age, women=0, men=0, womenTotal=0, menTotal=0):
 			self.age = age
 			self.women = women
 			self.men = men
+			self.womenTotal = womenTotal
+			self.menTotal = menTotal
+
 
 	year = semester.year
 	women = 0
 	men = 0
+	womenTotal = 0
+	menTotal = 0
 	startage = 7
 	endage = 25
 	ages = [Item('0 - 6')]
@@ -72,6 +79,13 @@ def scoutgroupsummary(sgroup_url):
 		else:
 			index = endage - startage + 3
 
+		if person.isFemale():
+			womenTotal += 1
+			ages[index].womenTotal += 1
+		else:
+			menTotal += 1
+			ages[index].menTotal += 1
+
 		if number_of_meetings > 9:
 			if person.isFemale():
 				women += 1
@@ -92,5 +106,5 @@ def scoutgroupsummary(sgroup_url):
 			else:
 				leaders[index].men += 1
 
-	ages.append(Item("Totalt", women, men))
+	ages.append(Item("Totalt", women, men, womenTotal, menTotal))
 	return render_template('groupsummary.html', ages=ages, boardmebers=boardmebers, leaders=leaders, breadcrumbs=breadcrumbs, emails=emails, year=semester.year)

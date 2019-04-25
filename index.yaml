@@ -12,6 +12,11 @@ indexes:
 
 - kind: Meeting
   properties:
+  - name: attendingPersons
+  - name: datetime
+
+- kind: Meeting
+  properties:
   - name: semester
   - name: troop
   - name: datetime

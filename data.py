@@ -161,6 +161,7 @@ class Person(PropertyWriteTracker):
 	firstname = ndb.StringProperty(required=True)
 	lastname = ndb.StringProperty(required=True)
 	birthdate = ndb.DateProperty(required=True) # could be a computed property from personnr
+	female = ndb.BooleanProperty(required=True)
 	personnr = ndb.StringProperty()
 	troop = ndb.KeyProperty(kind=Troop) # assigned default troop in scoutnet, can be member of multiple troops
 	patrool = ndb.StringProperty()
@@ -414,7 +415,7 @@ class TroopPerson(ndb.Model):
 	def getFullTroopname(self):
 		troop = self.troop.get()
 		semester = troop.semester_key.get()
-		return self.troop.get().getname() + ' - ' + semester.getname()
+		return semester.getname() + ' - ' + self.troop.get().getname()
 
 class UserPrefs(ndb.Model):
 	userid = ndb.StringProperty(required=True)

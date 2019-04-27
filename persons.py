@@ -6,6 +6,31 @@ from flask import Blueprint, render_template, abort, redirect, request
 
 persons = Blueprint('persons_page', __name__, template_folder='templates')
 
+def semester_sort(a, b):
+	a_name = a.getFullTroopname()
+	b_name = b.getFullTroopname()
+
+	a_year = a_name[:4]
+	b_year = b_name[:4]
+
+	if a_year == b_year:
+		a_semester = a_name[5:7]
+		b_semester = b_name[5:7]
+
+		if a_semester == b_semester:
+			if a_name > b_name:
+				return 1
+			else:
+				return -1
+		elif a_semester == "ht":
+			return -1
+		else:
+			return 1
+	elif a_year > b_year:
+		return -1
+	else:
+		return 1
+
 @persons.route('/')
 @persons.route('/<sgroup_url>')
 @persons.route('/<sgroup_url>/')
@@ -113,10 +138,12 @@ def show(sgroup_url=None, person_url=None, action=None):
 			breadcrumbs=breadcrumbs,
 			username=user.getname())
 	else:
+		trooppersons = TroopPerson.query(TroopPerson.person == person.key).fetch() # TODO: memcache
+
 		return render_template('person.html',
 			heading=section_title,
 			baselink='/persons/' + scoutgroup.key.urlsafe() + '/',
-			trooppersons=TroopPerson.query(TroopPerson.person == person.key).fetch(), # TODO: memcache
+			trooppersons=sorted(trooppersons, semester_sort),
 			ep=person,
 			scoutgroup=scoutgroup,
 			breadcrumbs=breadcrumbs)

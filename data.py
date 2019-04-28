@@ -32,6 +32,7 @@ class PropertyWriteTracker(ndb.Model):
 class Semester(ndb.Model):
 	year = ndb.IntegerProperty(required=True)
 	ht = ndb.BooleanProperty(required=True)
+	locked = ndb.BooleanProperty(required=False)
 
 	@staticmethod
 	def getid(year, ht):
@@ -82,6 +83,9 @@ class Semester(ndb.Model):
 			return "%04d-12-31" % (self.year)
 		else:
 			return "%04d-06-30" % (self.year)
+
+	def isOpen(self):
+		return not self.locked
 
 # kår
 class ScoutGroup(ndb.Model):
@@ -416,6 +420,11 @@ class TroopPerson(ndb.Model):
 		troop = self.troop.get()
 		semester = troop.semester_key.get()
 		return semester.getname() + ' - ' + self.troop.get().getname()
+
+	def isOpen(self):
+		troop = self.troop.get()
+		semester = troop.semester_key.get()
+		return semester.isOpen()
 
 class UserPrefs(ndb.Model):
 	userid = ndb.StringProperty(required=True)

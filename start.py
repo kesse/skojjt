@@ -4,7 +4,7 @@ import urllib
 import random
 import htmlform
 
-
+from operator import attrgetter
 import scoutnet
 from dataimport import UserPrefs, ndb, Person, logging, TroopPerson, Meeting, Troop, ScoutGroup, Semester
 from dakdata import DakData, Deltagare, Sammankomst
@@ -305,7 +305,7 @@ def show(sgroup_url=None, troop_url=None, key_url=None):
 			groupsummarylink='/groupsummary/' + sgroup_url + '/',
 			user=user,
 			semesters=sorted(Semester.query(), semester_sort),
-			troops=Troop.getTroopsForUser(sgroup_key, user),
+			troops=sorted(Troop.getTroopsForUser(sgroup_key, user), key=attrgetter('name')),
 			breadcrumbs=breadcrumbs)
 	elif key_url!=None and key_url!="dak" and key_url!="sensus" and key_url!="excel": #todo: change this to something sensible!
 		meeting = ndb.Key(urlsafe=key_url).get()

@@ -161,7 +161,7 @@ class Person(PropertyWriteTracker):
 	firstname = ndb.StringProperty(required=True)
 	lastname = ndb.StringProperty(required=True)
 	birthdate = ndb.DateProperty(required=True) # could be a computed property from personnr
-	female = ndb.BooleanProperty(required=True)
+	female = ndb.BooleanProperty(required=False)
 	personnr = ndb.StringProperty()
 	troop = ndb.KeyProperty(kind=Troop) # assigned default troop in scoutnet, can be member of multiple troops
 	patrool = ndb.StringProperty()

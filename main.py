@@ -442,7 +442,7 @@ def serverError(e):
 	logging.error("Error 500:%s", str(e))
 	return render_template('error.html', error=str(e)), 500
 
-#@app.errorhandler(Exception)
-#def defaultHandler(e):
-#	logging.error("Error:%s", str(e))
-#	return render_template('error.html', error=str(e)), 500
+@app.errorhandler(Exception)
+def defaultHandler(e):
+	logging.error("Error:%s", str(e))
+	return render_template('error.html', error=str(e)), 500

@@ -9,11 +9,10 @@
   <div class="row">
     <div class="col-xs-12 col-sm-6 col-md-4">
       <div class="form-group">
-        <label for="mtype">Mötestyp</label>
-        <select class="form-control" id="mtype" name="type">
-          <option {% if hasMeeting and existingmeeting.gettype() == "mote" %}selected="selected"{% endif %} value="mote">Möte</option>
-          <option {% if hasMeeting and existingmeeting.gettype() == "lager" %}selected="selected"{% endif %}value="lager">Läger</option>
-        </select>
+        <input title="Del av läger" class="hike-tgl checkbox big-checkbox" name="ishike" id="mhike" type="checkbox"
+               {% if hasMeeting and existingmeeting.getishike() %}checked{% endif %}/>
+        </input>
+        <label for="mhike">Del av läger</label>
       </div>
     </div>
     <div class="col-xs-12 col-sm-6 col-md-4">
@@ -49,24 +48,9 @@
   </div>
 
   <script>
+    $(document).ready(function() {
       {% if not hasMeeting %}
         $("#mdate").val(getTodaysDateString());
-
-        $("#mtype").change(function() {
-            var value = $( this ).val();
-
-            if (value === 'mote') {
-                $("#mname").val("Möte");
-                $("#starttime").val("{{troop.defaultstarttime}}");
-                $("#mduration").val("{{troop.defaultduration}}");
-            } else {
-                $("#mname").val("Läger");
-                $("#starttime").val("08:00");
-                $("#mduration").val("480");
-            }
-        });
-
-        $("#mtype").change();
       {% endif %}
 
       $("#mstoptime").change(function() {
@@ -104,6 +88,20 @@
       }
 
       $("#mduration").change();
+
+      $('#mishike').click(function(event) {
+        var hikeChecked = this.checked;
+        if (hikeChecked) {
+          $("#mname").val("Läger");
+          $("#starttime").val("00:00");
+          $("#mduration").val("1440");
+        } else {
+          $("#mname").val("Möte");
+          $("#starttime").val("{{troop.defaultstarttime}}");
+          $("#mduration").val("{{troop.defaultduration}}");
+        };
+      });
+    });
   </script>
   <div class="row">
     <div class="col-xs-12">

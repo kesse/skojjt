@@ -10,19 +10,19 @@
 			<th class="patruller extrainfo col-hidden" style="display:none" width="100">Patrull</th>
 			<th class="birthday extrainfo col-hidden" style="display:none">Födelsedatum</th>
 			{% for meeting in meetings %}
-			<th class="rotate"><div><span><a href="./{{meeting.key.urlsafe()}}/">{{meeting.name}}</a><br/><span title="{{meeting.getdate()}} {{meeting.gettime()}}">{{meeting.getdate()}}</span></span></div></th>
+			<th class="rotate"><div><span><a href="./{{meeting.key.urlsafe()}}/" {% if meeting.getishike() %} class="hike" {% endif %}>{{meeting.name}}</a><br/><span title="{{meeting.getdate()}} {{meeting.gettime()}}">{{meeting.getdate()}}</span></span></div></th>
 			{% endfor %}
 		</tr>
 	  </thead>
 	  <tbody>
 		<tr>
-			<td class="name-field"><strong>Välj alla / ingen:</strong></td>
+			<td class="name-field"><strong>Välj alla / ingen / som igår:</strong></td>
 			<td class="removebutton extrainfo" style="display:none"></td>
 			<td class="patruller extrainfo" style="display:none" width="100"></td>
 			<td class="birthday extrainfo" style="display:none"></td>
 			{% for meeting in meetings %}
 			<td>
-			<input title="Välj alla / ingen" class="attendance-tgl checkbox big-checkbox" name="tgl{{meeting.key.urlsafe()}}"  type="checkbox" ></input>
+			<input title="Välj alla / ingen / som igår" class="attendance-tgl checkbox big-checkbox" name="tgl{{meeting.key.urlsafe()}}"  type="checkbox" ></input>
 			</td>
 			{% endfor %}
 		</tr>
@@ -82,6 +82,10 @@
 			<div id="newmeeting" class="collapse">
 				{% include "meetingform.html" %}
 			</div>
+			<button data-toggle="collapse" data-target="#newhike" set-focus="#mhikename" class="btn btn-info btn-lg togglebutton">Nytt läger</button>
+			<div id="newhike" class="collapse">
+				{% include "lagerform.html" %}
+			</div>
 			<button data-toggle="collapse" data-target="#newmember" set-focus="#namesearch" class="btn btn-lg btn-info togglebutton">Lägg till person</button>
 			<div id="newmember" class="collapse">
 				<h2>Lägg till avdelningsmedlem</h2>
@@ -136,13 +140,17 @@
 			<div><a class="btn btn-lg btn-info" id="daklink" href="./dak/">Rapportfil för Göteborgs Kommun</a></div>
 			<div><a class="btn btn-lg btn-info" id="sensus" href="./sensus/">Sensus lista</a></div>
 			<div><a class="btn btn-lg btn-info" id="excel" href="./excel/">Excelrapport</a></div>
-			<div><a class="btn btn-lg btn-info" data-toggle="collapse" data-target="#lagerbidrag_info">Lägerbidrag Göteborg</a></div>
+			<div><a class="btn btn-lg btn-info" data-toggle="collapse" data-target="#lagerbidrag_info_gbg">Lägerbidrag Göteborg</a></div>
+			<div><a class="btn btn-lg btn-info" data-toggle="collapse" data-target="#lagerbidrag_info_sthlm">Lägerbidrag Stockholm</a></div>
 			<div><a href="#" class="btn btn-lg btn-info" id="csv_export" download="{{heading}}.csv">Exportera CSV</a></div>
 		</div>
 
-		<div id="lagerbidrag_info" class="collapse well col-xs-12 col-md-6">
-			{% include "lagerbidragform.html" %}
+		<div id="lagerbidrag_info_gbg" class="collapse well col-xs-12 col-md-6">
+			{% include "lagerbidragform_gbg.html" %}
 		</div>
+		<div id="lagerbidrag_info_sthlm" class="collapse well col-xs-12 col-md-6">
+				{% include "lagerbidragform_sthlm.html" %}
+			</div>
 	</div>
 
 	<div class="clearfix"></div>
@@ -174,6 +182,9 @@ $(document).ready(function() {
 	});
 	$("#newmeeting").on('shown.bs.collapse', function(){
 		$("#mname")[0].focus();
+	});
+	$("#newhike").on('shown.bs.collapse', function(){
+		$("#mhikename")[0].focus();
 	});
 	$("#newmember").on('shown.bs.collapse', function (){
 		$("#namesearch")[0].focus();
@@ -249,15 +260,64 @@ $(document).ready(function() {
 		$(".saveinfo").html("<br/>Klicka för att spara:");
 	});
 
+	function shiftCheckBoxTitleOneDay(cbTitle)
+	{
+		var parts = cbTitle.split(":");
+		var cbDay = Date.parse(parts[0]);
+		var prevDay = cbDay - 1000 * 3600 * 24;
+		var p = new Date(prevDay);
+		var prevStr = p.toISOString().split('T')[0];
+		return prevStr + ":" + parts[1];
+	}
+
+	//Three-state toogle if there is a meeting one day before. Useful for lager/hikes
 	function toggleParticipants(meeting_url, checked)
 	{
 		var name = 'cb' + meeting_url;
 		var checkboxes = $('input:checkbox[name="' + name + '"]');
+
+		var nr_checked = 0;
 		for (var cb=0; cb < checkboxes.length; cb++)
 		{
-			checkboxes[cb].checked = checked
+			if (checkboxes[cb].checked) {
+				nr_checked++;
+			}
+		}
+
+		if (checked && nr_checked === 0) {
+			// Copy from previous day if available (for hikes/lager)
+			var prev_day_empty = true;
+			for (var cb=0; cb < checkboxes.length; cb++)
+		    {
+				var cb_today = checkboxes[cb];
+				var cb_title = cb_today.title;
+				var cb_prev_title = shiftCheckBoxTitleOneDay(cb_title);
+				var cb_prev = $("input:checkbox[title='" + cb_prev_title + "']");
+				if (cb_prev.length > 0)
+				{
+					checkboxes[cb].checked = cb_prev[0].checked;
+					if (cb_prev[0].checked) { 
+						prev_day_empty = false;
+						nr_checked++;
+					}
+				} else {
+					checkboxes[cb].checked = checked;
+				}
+			}
+			if (prev_day_empty && nr_checked === 0) {
+				for (cb=0; cb < checkboxes.length; cb++)
+				{
+					checkboxes[cb].checked = true;
+				}
+			}
+		} else {
+			for (var cb=0; cb < checkboxes.length; cb++)
+			{
+				checkboxes[cb].checked = checked;
+			}
 		}
 	}
+
 	function updateCheckAllCheckbox(meeting_url)
 	{
 		var checkboxes = $('input:checkbox[name="cb' + meeting_url + '"]');

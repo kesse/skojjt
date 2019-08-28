@@ -131,8 +131,8 @@ def show(sgroup_url=None, troop_url=None, key_url=None):
 				shoould_add_to_scoutnet = request.form['should_not_add_to_scoutnet'] != '1'
 
 			person = Person.createlocal(
-				request.form['firstname'], 
-				request.form['lastname'], 
+				request.form['firstname'],
+				request.form['lastname'],
 				pnr,
 				request.form['mobile'],
 				request.form['phone'],
@@ -251,24 +251,24 @@ def show(sgroup_url=None, troop_url=None, key_url=None):
 
 			mname = request.form['name']
 			mdate = request.form['date']
-			mtype = request.form['type']
+			mishike = bool(request.form.get('ishike'))
 			mtime = request.form['starttime'].replace('.', ':')
 			dtstring = mdate + "T" + mtime
 			mduration = request.form['duration']
 			dt = datetime.datetime.strptime(dtstring, "%Y-%m-%dT%H:%M")
 			if action == "addmeeting":
-				meeting = Meeting.getOrCreate(troop_key, 
+				meeting = Meeting.getOrCreate(troop_key,
 					mname,
 					dt,
 					int(mduration),
-					mtype)
+					mishike)
 			else:
 				meeting = ndb.Key(urlsafe=key_url).get()
 
 			meeting.name = mname
 			meeting.datetime = dt
 			meeting.duration = int(mduration)
-			meeting.type = mtype
+			meeting.ishike = mishike
 			meeting.commit()
 			return redirect(breadcrumbs[-1]['link'])
 		elif action == "deletemeeting":
@@ -279,6 +279,21 @@ def show(sgroup_url=None, troop_url=None, key_url=None):
 			logging.debug("deleting meeting=%s", meeting.getname())
 			meeting.delete()
 			return redirect(breadcrumbs[-1]['link'])
+		elif action == "addhike":
+			mname = request.form['name']
+			mdate = request.form['date']
+			mdays = int(request.form['days'])
+			dt = datetime.datetime.strptime(mdate, "%Y-%m-%d")
+			for i in range(mdays):
+				day_time = dt + datetime.timedelta(days=i)
+				meeting = Meeting.getOrCreate(troop_key,
+					mname,
+					day_time,
+					duration=1440,  # 24h (needs some value)
+					ishike=True)
+				meeting.commit()
+			return redirect(breadcrumbs[-1]['link'])
+
 		elif action == "savepatrol":
 			if troop == None or scoutgroup == None or lockedTroop:
 				raise ValueError('Missing troop or group')
@@ -313,23 +328,7 @@ def show(sgroup_url=None, troop_url=None, key_url=None):
 			items=ScoutGroup.getgroupsforuser(user),
 			breadcrumbs=breadcrumbs)
 	elif troop_url == "lagerbidrag":
-		fromDate = request.form['fromDate']
-		toDate = request.form['toDate']
-		site = request.form['site']
-		contactperson = request.form['contactperson']
-		troops = Troop.getTroopsForUser(sgroup_key, user)
-		try:
-			bidrag = lagerbidrag.createLagerbidragGroup(scoutgroup, troops, contactperson, site, fromDate, toDate)
-			result = render_template(
-				'lagerbidrag.html',
-				bidrag=bidrag.bidrag,
-				persons=bidrag.persons,
-				numbers=bidrag.numbers)
-			response = make_response(result)
-			return response
-		except ValueError as e:
-			return render_template('error.html', error=str(e))
-
+		return lagerbidrag.render_lagerbidrag(request, scoutgroup, "group", user=user, sgroup_key=sgroup_key)
 	elif troop==None:
 		section_title = 'Avdelningar'
 		return render_template('troops.html',
@@ -354,7 +353,8 @@ def show(sgroup_url=None, troop_url=None, key_url=None):
 			baselink=baselink,
 			existingmeeting=meeting,
 			breadcrumbs=breadcrumbs,
-			semester=troop.semester_key.get())
+			semester=troop.semester_key.get(),
+			troop=troop)
 	else:
 		meetingCount = 0
 		sumMaleAttendenceCount = 0
@@ -546,23 +546,7 @@ def show(sgroup_url=None, troop_url=None, key_url=None):
 			response = make_response(result)
 			return response
 		elif key_url == "lagerbidrag":
-
-			fromDate = request.form['fromDate']
-			toDate = request.form['toDate']
-			site = request.form['site']
-			contactperson = request.form['contactperson']
-			try:
-				bidrag = lagerbidrag.createLagerbidrag(scoutgroup, trooppersons, troop_key, contactperson, site, fromDate, toDate)
-				result = render_template(
-					'lagerbidrag.html',
-					bidrag=bidrag.bidrag,
-					persons=bidrag.persons,
-					numbers=bidrag.numbers)
-				response = make_response(result)
-				return response
-			except ValueError as e:
-				return render_template('error.html', error=str(e))
-
+			return lagerbidrag.render_lagerbidrag(request, scoutgroup, "troop", trooppersons=trooppersons, troop_key=troop_key)
 		else:
 			allowance = []
 			allowance.append({'name':'Antal möten:', 'value':meetingCount})

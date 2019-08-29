@@ -74,7 +74,7 @@ a.hike
     font-style: italic;
 }
 
-.hike-tgl
+.hike-tgl label
 {
-    display: inline-block;
+    font-weight: bold;
 }

@@ -8,11 +8,12 @@
 {% endif %}
   <div class="row">
     <div class="col-xs-12 col-sm-6 col-md-4">
-      <div class="form-group">
-        <input title="Del av läger" class="hike-tgl checkbox big-checkbox" name="ishike" id="mhike" type="checkbox"
-               {% if hasMeeting and existingmeeting.getishike() %}checked{% endif %}/>
-        </input>
-        <label for="mhike">Del av läger</label>
+      <div class="form-group checkbox hike-tgl">
+        <label>
+          <input title="Del av läger" class="checkbox" name="ishike" id="mhike" type="checkbox"
+             {% if hasMeeting and existingmeeting.getishike() %}checked{% endif %} />
+          Del av läger
+        </label>
       </div>
     </div>
     <div class="col-xs-12 col-sm-6 col-md-4">
@@ -49,35 +50,42 @@
 
   <script>
     $(document).ready(function() {
+      var durationField = $("#mduration");
+      var dateField = $("#mdate");
+      var startTimeField = $("#starttime");
+      var stopTimeField = $("#mstoptime");
+      var nameField = $("#mname");
+      var hikeField = $("#mhike");
+
       {% if not hasMeeting %}
-        $("#mdate").val(getTodaysDateString());
+        dateField.val(getTodaysDateString());
+        setDefaultTime(false);
       {% endif %}
 
-      $("#mstoptime").change(function() {
-          var from = $("#starttime").val();
-          var to = $( this ).val();
+      stopTimeField.change(function() {
+        var from = startTimeField.val();
+        var to = stopTimeField.val();
 
+        var startTime = new Date('2012/10/09 ' + from);
+        var endTime = new Date('2012/10/09 ' + to);
+        var difference = endTime.getTime() - startTime.getTime(); // This will give difference in milliseconds
+        var resultInMinutes = Math.round(difference / 60000);
 
-          var startTime = new Date('2012/10/09 ' + from);
-          var endTime = new Date('2012/10/09 ' + to);
-          var difference = endTime.getTime() - startTime.getTime(); // This will give difference in milliseconds
-          var resultInMinutes = Math.round(difference / 60000);
-
-          $("#mduration").val(resultInMinutes);
+        durationField.val(resultInMinutes);
       });
 
-      $("#mduration").change(function() {
-          var from = $("#starttime").val();
-          var value = $( this ).val();
+      durationField.change(function() {
+        var from = startTimeField.val();
+        var value = durationField.val();
 
-          var startTime = new Date('2012/10/09 ' + from);
+        var startTime = new Date('2012/10/09 ' + from);
 
-          var newDateObj = new Date(startTime.getTime() + value*60000);
+        var newDateObj = new Date(startTime.getTime() + value*60000);
 
-          var hours = addZero(newDateObj.getHours());
-          var minutes = addZero(newDateObj.getMinutes());
+        var hours = addZero(newDateObj.getHours());
+        var minutes = addZero(newDateObj.getMinutes());
 
-          $("#mstoptime").val(hours + ':' + minutes);
+        stopTimeField.val(hours + ':' + minutes);
       });
 
       function addZero(i) {
@@ -87,20 +95,26 @@
           return i;
       }
 
-      $("#mduration").change();
+      durationField.change();
 
-      $('#mishike').click(function(event) {
+      hikeField.click(function() {
         var hikeChecked = this.checked;
-        if (hikeChecked) {
-          $("#mname").val("Läger");
-          $("#starttime").val("00:00");
-          $("#mduration").val("1440");
-        } else {
-          $("#mname").val("Möte");
-          $("#starttime").val("{{troop.defaultstarttime}}");
-          $("#mduration").val("{{troop.defaultduration}}");
-        };
+        setDefaultTime(hikeChecked);
       });
+
+      function setDefaultTime(hikeChecked) {
+        if (hikeChecked) {
+          nameField.val("Läger");
+          startTimeField.val("08:00");
+          durationField.val("600");
+          durationField.change();
+        } else {
+          nameField.val("Möte");
+          startTimeField.val("{{troop.defaultstarttime}}");
+          durationField.val("{{troop.defaultduration}}");
+          durationField.change();
+        }
+      }
     });
   </script>
   <div class="row">

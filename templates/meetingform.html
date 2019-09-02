@@ -10,8 +10,7 @@
     <div class="col-xs-12 col-sm-6 col-md-4">
       <div class="form-group checkbox hike-tgl">
         <label>
-          <input title="Del av läger" class="checkbox" name="ishike" id="mhike" type="checkbox"
-             {% if hasMeeting and existingmeeting.getishike() %}checked{% endif %} />
+          <input title="Del av läger" class="checkbox" name="ishike" id="mhike" type="checkbox" {% if hasMeeting and existingmeeting.getishike() %}checked{% endif %} />
           Del av läger
         </label>
       </div>
@@ -42,81 +41,11 @@
     </div>
     <div class="col-xs-12 col-sm-6 col-md-4">
       <div class="form-group">
-        <label for="mstoptime">Sluttid (för att räkna ut minuter)</label>
+        <label for="mstoptime">Sluttid (för att räkna ut längd)</label>
         <input type="time" class="form-control" id="mstoptime" />
       </div>
     </div>
   </div>
-
-  <script>
-    $(document).ready(function() {
-      var durationField = $("#mduration");
-      var dateField = $("#mdate");
-      var startTimeField = $("#starttime");
-      var stopTimeField = $("#mstoptime");
-      var nameField = $("#mname");
-      var hikeField = $("#mhike");
-
-      {% if not hasMeeting %}
-        dateField.val(getTodaysDateString());
-        setDefaultTime(false);
-      {% endif %}
-
-      stopTimeField.change(function() {
-        var from = startTimeField.val();
-        var to = stopTimeField.val();
-
-        var startTime = new Date('2012/10/09 ' + from);
-        var endTime = new Date('2012/10/09 ' + to);
-        var difference = endTime.getTime() - startTime.getTime(); // This will give difference in milliseconds
-        var resultInMinutes = Math.round(difference / 60000);
-
-        durationField.val(resultInMinutes);
-      });
-
-      durationField.change(function() {
-        var from = startTimeField.val();
-        var value = durationField.val();
-
-        var startTime = new Date('2012/10/09 ' + from);
-
-        var newDateObj = new Date(startTime.getTime() + value*60000);
-
-        var hours = addZero(newDateObj.getHours());
-        var minutes = addZero(newDateObj.getMinutes());
-
-        stopTimeField.val(hours + ':' + minutes);
-      });
-
-      function addZero(i) {
-          if (i < 10) {
-              i = "0" + i;
-          }
-          return i;
-      }
-
-      durationField.change();
-
-      hikeField.click(function() {
-        var hikeChecked = this.checked;
-        setDefaultTime(hikeChecked);
-      });
-
-      function setDefaultTime(hikeChecked) {
-        if (hikeChecked) {
-          nameField.val("Läger");
-          startTimeField.val("08:00");
-          durationField.val("600");
-          durationField.change();
-        } else {
-          nameField.val("Möte");
-          startTimeField.val("{{troop.defaultstarttime}}");
-          durationField.val("{{troop.defaultduration}}");
-          durationField.change();
-        }
-      }
-    });
-  </script>
   <div class="row">
     <div class="col-xs-12">
       <button {% if semester.locked %}disabled="disabled"{% endif %} type="submit" name="submit" class="btn btn-lg btn-primary">{% if hasMeeting %}Spara{% else %}Lägg till{% endif %}</button>
@@ -133,3 +62,72 @@
   </div>
 </form>
 {% endif %}
+<script>
+  $(document).ready(function() {
+    var durationField = $("#mduration");
+    var dateField = $("#mdate");
+    var startTimeField = $("#starttime");
+    var stopTimeField = $("#mstoptime");
+    var nameField = $("#mname");
+    var hikeField = $("#mhike");
+
+    {% if not hasMeeting %}
+      dateField.val(getTodaysDateString());
+      setDefaultTime(false);
+    {% endif %}
+
+    stopTimeField.change(function() {
+      var from = startTimeField.val();
+      var to = stopTimeField.val();
+
+      var startTime = new Date('2012/10/09 ' + from);
+      var endTime = new Date('2012/10/09 ' + to);
+      var difference = endTime.getTime() - startTime.getTime(); // This will give difference in milliseconds
+      var resultInMinutes = Math.round(difference / 60000);
+
+      durationField.val(resultInMinutes);
+    });
+
+    durationField.change(function() {
+      var from = startTimeField.val();
+      var value = durationField.val();
+
+      var startTime = new Date('2012/10/09 ' + from);
+
+      var newDateObj = new Date(startTime.getTime() + value*60000);
+
+      var hours = addZero(newDateObj.getHours());
+      var minutes = addZero(newDateObj.getMinutes());
+
+      stopTimeField.val(hours + ':' + minutes);
+    });
+
+    function addZero(i) {
+      if (i < 10) {
+        i = "0" + i;
+      }
+      return i;
+    }
+
+    durationField.change();
+
+    hikeField.click(function() {
+      var hikeChecked = this.checked;
+      setDefaultTime(hikeChecked);
+    });
+
+    function setDefaultTime(hikeChecked) {
+      if (hikeChecked) {
+        nameField.val("Läger");
+        startTimeField.val("08:00");
+        durationField.val("600");
+        durationField.change();
+      } else {
+        nameField.val("Möte");
+        startTimeField.val("{{troop.defaultstarttime}}");
+        durationField.val("{{troop.defaultduration}}");
+        durationField.change();
+      }
+    }
+  });
+</script>

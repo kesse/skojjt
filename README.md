@@ -1,61 +1,76 @@
-# Scoutkåren Göta Lejon närvaro
+# ScoutkÃ¥ren GÃ¶ta Lejon nÃ¤rvaro
 
-En fork av Skojjt som är utvecklad av Martin Green/Tynnereds scoutk?r.
+En fork av Skojjt som Ã¤r utvecklad av Martin Green/Tynnereds scoutk?r.
 https://github.com/martin-green/skojjt
 
-Ni kommer åt närvaron på:
+Ni kommer Ã¥t nÃ¤rvaron pÃ¥:
 https://gotalejon-narvaro.appspot.com
 
-Målet med skojjt är en enkel närvaroregistrering som kan används av alla på avdelning. Samt att göra rapporteringen enkel (ingen excel).
-Alternativen verkar så undermåliga för vår verksamhet, så ett eget system var den bästa möjligheten.
-Man ska kunna göra sin registering direkt när man har mötet.
-Det finns en direktkoppling till vårt eget medlemsregister, scoutnet. Vi kan synkronisera nya medlemmar direkt från scoutnet med en knapptryckning.
-Det är en web-site som fungerar i mobiltelefon, inget behov av en app. Det ser ut som en app i telefonens browser.
-Den hostas på Google app engine. Vilket ger följande fördelar:
-* Google står för säkerheten. Användarna loggar in med sina google konton. Administratören sätter access i skojjt, sen kan dom registrera.
-* google står för SSL certifikatet. All trafik går via https.
-* Driftsäkerheten är god.
-* Det är gratis upp till en viss gräns för trafik och datamängd (mer memcache behövs, för att begränsa data läsningar).
-* Om det skulle bli många användare så klarar googles servrar det.
+MÃ¥let med skojjt Ã¤r en enkel nÃ¤rvaroregistrering som kan anvÃ¤nds av alla pÃ¥ avdelning.
+Alternativen verkar sÃ¥ undermÃ¥liga fÃ¶r vÃ¥r verksamhet, sÃ¥ ett eget system var den bÃ¤sta mÃ¶jligheten.
+Man ska kunna gÃ¶ra sin registering direkt nÃ¤r man har mÃ¶tet.
+Det finns en direktkoppling till vÃ¥rt eget medlemsregister, scoutnet. Vi kan synkronisera nya medlemmar direkt frÃ¥n scoutnet med en knapptryckning.
+Det Ã¤r en web-site som fungerar i mobiltelefon, inget behov av en app. Det ser ut som en app i telefonens browser.
+Den hostas pÃ¥ Google app engine. Vilket ger fÃ¶ljande fÃ¶rdelar:
+* Google stÃ¥r fÃ¶r sÃ¤kerheten. AnvÃ¤ndarna loggar in med sina google konton. AdministratÃ¶ren sÃ¤tter access i skojjt, sen kan dom registrera.
+* Google stÃ¥r fÃ¶r SSL certifikatet. All trafik gÃ¥r via https.
+* DriftsÃ¤kerheten Ã¤r god.
+* Det Ã¤r gratis upp till en viss grÃ¤ns fÃ¶r trafik och datamÃ¤ngd.
+* Om det skulle bli mÃ¥nga anvÃ¤ndare sÃ¥ klarar googles servrar det.
 
-Det finns rapportering av närvaro per grupp (avdelning) som Göteborgs kommun kräver.
-Vi har även möjlighet att koppla denna närvaro till andra partners, t ex Sensus studieförbund.
+Det finns rapportering av nÃ¤rvaro per grupp (avdelning) som GÃ¶teborgs kommun krÃ¤ver.
+Vi har Ã¤ven mÃ¶jlighet att koppla denna nÃ¤rvaro till andra partners, t ex Sensus studiefÃ¶rbund.
 
-Skojjt implementerar APN/DAK för redovisning till Göteborgs kommun:
+Skojjt implementerar APN/DAK fÃ¶r redovisning till GÃ¶teborgs kommun:
+ * http://www.sverigesforeningssystem.se/dak-formatet/vad-ar-dak/
+ * http://ukf.umea.se/aktivitetskort
 
-http://www.sverigesforeningssystem.se/dak-formatet/vad-ar-dak/
-http://ukf.umea.se/aktivitetskort
-
-### [Dokumentation](https://github.com/martin-green/skojjt/wiki)
+### [Dokumentation](https://github.com/Scouterna/skojjt/wiki)
 
 ### Hur man testar/utvecklar i Windows:
-* Klona git-repon till lokal dator.
-* Installera Python 2.7 och Google App Engine SDK (GAE). 
-	https://storage.googleapis.com/appengine-sdks/featured/GoogleAppEngine-1.9.73.msi
-* Starta GAE. Lägg till skojjt med File|Add existing application...
-* Markera skojjt i listan kicka start, sen browse.
-* Man kan också köra Visual Studio Code för att få brytpunkter i koden.
+* Installera Git
+* Installera Python 2.7
+* Installera [Google Cloud SDK](https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe).
+* Klona git-repot: 
+    + `git clone https://github.com/Scouterna/skojjt`
+* Uppdatera biblioteken (kan Ã¤ven behÃ¶vas efter pull):
+    + `pip install -r requirements.txt -t lib`
+* Initiera Google Cloud:
+    + `gcloud init`
+* Du kan behÃ¶va uppdatera Google Cloud (om du redan har en installation):
+    + `gcloud components update`
+* Om du gÃ¶r Ã¤ndringar i data eller queries sÃ¥ kan du behÃ¶va kÃ¶ra:
+    + `gcloud datastore indexes create index.yaml`
+* Starta servern lokalt:
+    + `python "c:\Program Files (x86)\Google\google_appengine\dev_appserver.py" app.yaml`
+* Ã–ppna en weblÃ¤sare pÃ¥ adress: [http://localhost:8080/](http://localhost:8080/)
+* Deploy projektet publikt som `skojjt-X`(ditt val av namn)
+  + `gcloud app deploy index.yaml --project skojjt-X`
+  + `gcloud app deploy app.yaml --project skojjt-X`
+* Testa appen `gcloud app browse`
 
 ### Hur man testar/utvecklar i Linux:
 * Klona git-repon till lokal dator.
-* Installera Python 2.7 och Google App Engine SDK (GAE). 
-* Konfigurera GAE `gcloud init`
-* Deploy kod `gcloud app deploy` från git mappen
+* Installera Python 2.7 och [Google App Engine SDK (GAE)](https://cloud.google.com/sdk/docs/#deb).
+* Installera biblioteken. `pip install -r requirements.txt -t lib`
+* Konfigurera GAE `gcloud init` och fÃ¶lj instruktionerna.
+* Deploy kod `gcloud app deploy` frÃ¥n git mappen
+* Update indexes`gcloud datastore indexes create index.yaml`
 * Testa appen `gcloud app browse`
 
 
-### Hur man testar/utvecklar på Mac:
-* Använd homebrew får att installera Python 2.7 och Google App Engine.
+### Hur man testar/utvecklar pÃ¥ Mac:
+* Anvï¿½nd homebrew fÃ¶r att installera Python 2.7 och Google App Engine.
     + Installera homebrew om inte redan gjort 
     + Installera python2 i homebrew
-    + Installera Google App Engine (ligger i en cask eftersom den är binär)
+    + Installera Google App Engine (ligger i en cask eftersom den Ã¤r binÃ¤r)
         - `brew cask info google-cloud-sdk`
         - `brew tap caskroom/cask`
         - `brew cask install google-cloud-sdk`
         - `source /usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/path.bash.inc`
         - `source /usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/completion.bash.inc`
 * Konfigurera GAE `gcloud init`
-* Kör lokal test-server och admin fönster:
+* Kï¿½r lokal test-server och admin fï¿½nster:
   + `dev_server.py app.yaml`
   + `open http://localhost:8080`
 * Deploy projektet `skojjt-X`(ditt val av namn)

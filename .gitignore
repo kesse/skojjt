@@ -3,6 +3,9 @@
 !lib/README.md
 .DS_Store
 *.ini
-members.csv
 *.iml
 .idea
+/venv/
+/lib/
+/__pycache__/
+.pytest_cache/

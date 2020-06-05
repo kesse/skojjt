@@ -107,7 +107,8 @@ class ScoutGroup(ndb.Model):
 
     @staticmethod
     def getid(name):
-        return name.lower().replace(' ', '')
+        return "götalejon,scoutkåren"
+        # name.lower().replace(' ', '')
 
     @staticmethod
     def getbyname(name):

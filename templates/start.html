@@ -5,8 +5,14 @@
 	<img src="/img/logo.png" alt="logo" />
   <div class="btn-toolbar">
 	<h2 class=>Välkommen {{user.getname()}}</h2>
-	<a href="{{starturl}}" class="btn btn-lg btn-primary"><span class="glyphicon glyphicon-check"></span> Närvaroregistrering</a>
-	<a href="{{personsurl}}" class="btn btn-lg btn-default"><span class="glyphicon glyphicon-user"></span> Personregister</a>
+		{% if user.hasAccess() %}
+			<a href="{{starturl}}" class="btn btn-lg btn-primary"><span class="glyphicon glyphicon-check"></span> Närvaroregistrering</a>
+			<a href="{{personsurl}}" class="btn btn-lg btn-default"><span class="glyphicon glyphicon-user"></span> Personregister</a>
+		{% else %}
+			<h3>
+				Skicka ett mail till <a href="mailto:it@gotalejon.org?title=Access%20skojjt">it@gotalejon.org</a> för att kunna rapportera närvaro.
+			</h3>
+		{% endif %}
   </div>
 {% if user.canImport() %}
 	<hr/>
